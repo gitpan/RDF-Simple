@@ -16,8 +16,12 @@ sub parse_rdf {
     $factory->require_feature(Namespaces);
     my $handler = RDF::Simple::Parser::Handler->new($sink, qnames => 1, base => $self->base );
     my $parser = $factory->parser(Handler=>$handler);
-    $parser->parse_string($rdf);
-    return @{ $handler->result };
+    eval {	
+    	$parser->parse_string($rdf);
+    };
+    return if $@;	
+    my $result = $handler->result;	
+    return @{ $result } if $result;
 }
 
 sub parse_uri {

@@ -2,6 +2,7 @@ package RDF::Simple::Serialiser;
 
 use strict;
 use Template;
+use Storable qw(dclone);
 use RDF::Simple::NS;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
@@ -12,7 +13,7 @@ sub serialise {
     my ($self,@triples) = @_;
     my %object_ids;
     foreach (@triples) {
-        push @{$object_ids{$_->[0]}}, $_;
+        push @{$object_ids{$_->[0]}}, dclone $_;
     }
     my @objects;
 
@@ -132,7 +133,7 @@ sub ns {
 
 sub used {
     my ($self, $uri) = @_;
-    if ($uri !~ m/^http/) {	
+    if ($uri and ($uri !~ m/^http/)) {	
     	my $pref = $self->ns->prefix($uri);
 	$self->{_used_entities}->{ $pref } = 1 if $pref;
     }
@@ -289,7 +290,7 @@ use base qw(RDF::Simple::Serialiser);
 
 =head1 THANKS
 
-    Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches.
+    Thanks particularly to Tom Hukins, Paul Mison, and Richard Clamp, for providing patches.
 
 =head1 AUTHOR
 
