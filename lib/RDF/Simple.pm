@@ -2,7 +2,7 @@
 package RDF::Simple;
 use strict;
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 sub new
 {
@@ -13,11 +13,11 @@ sub new
         return ($self);
 }
 
-=head1 NAME RDF::Simple
+=head1 NAME
 
+RDF::Simple - read and write RDF without complication
 
 =head1 DESCRIPTION
-
 
     This package is for very simple manipulations
     of RDF/XML serialisations of RDF graphs. 
@@ -38,7 +38,11 @@ sub new
     literal and resource values in the model
     All you get back is a bucket-o-triples
     (array of arrays)
-    The serialiser does its best to do DWYM.
+    
+    Use the parser to read RDF that you recieve.
+        
+    The serialiser does its best to do DWYM. Use the
+    serialiser to build RDF to send to others.
 
     If you want a more complex and involved RDF API,
     I'd suggest looking at RDF::Core
@@ -47,8 +51,6 @@ sub new
     
     This is an early alpha release, and likely contains bugs.
     Please report them!
-    
-    
 
 =head1 AUTHOR
     

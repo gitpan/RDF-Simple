@@ -17,7 +17,7 @@ my @triples = $par->parse_rdf($rdf);
 $rdf = $ser->serialise(@triples);
 @triples = $par->parse_rdf($rdf);
 
-ok ($rdf ne undef);
+ok (defined $rdf);
 ok (scalar(@triples) eq 1);
 
 

@@ -3,7 +3,7 @@ package RDF::Simple::Parser;
 use strict;
 use XML::SAX qw(Namespaces Validation);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base)];
 
@@ -99,6 +99,7 @@ sub end_element {
         my $kids = $stack->[-1]->children || [];
         push @$kids, $element;
         $stack->[-1]->children($kids);
+        @{ $element->{xtext} } = grep { defined($_) } @{ $element->{xtext} };
         $stack->[-1]->{xtext}->[1] = join('',@{$element->{xtext}});
         $self->stack($stack);
     }
