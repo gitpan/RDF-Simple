@@ -3,7 +3,7 @@ package RDF::Simple::Parser;
 use strict;
 use XML::SAX qw(Namespaces Validation);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base)];
 
@@ -443,7 +443,7 @@ sub write {
 =head1 SYNOPSIS
 
     my $uri = 'http://www.zooleika.org.uk/bio/foaf.rdf';
-    my $rdf = LWP::Simple->get($uri);
+    my $rdf = LWP::Simple::get($uri);
  
     my $parser = RDF::Simple::Parser->new(base => $uri)
     my @triples = $parser->parse_rdf($rdf);

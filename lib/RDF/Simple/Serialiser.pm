@@ -6,7 +6,7 @@ use RDF::Simple::NS;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub serialise {
     my ($self,@triples) = @_;
@@ -193,7 +193,7 @@ use base qw(RDF::Simple::Serialiser);
     ## round-trip
 
     my $parser = RDF::Simple::Parser->new();
-    my $rdf = LWP::Simple->get('http://www.zooleika.org.uk/foaf.rdf');
+    my $rdf = LWP::Simple::get('http://www.zooleika.org.uk/foaf.rdf');
 
     my @triples = $parser->parse_rdf($rdf);
     my $new_rdf = $serialiser->serialise(@triples);
