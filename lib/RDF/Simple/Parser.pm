@@ -4,9 +4,9 @@ use strict;
 use XML::SAX qw(Namespaces Validation);
 use LWP::UserAgent;
 
-our $VERSION = '0.1';
+our $VERSION = '0.2';
 
-use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base)];
+use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base http_proxy)];
 
 sub parse_rdf {
     my ($self,$rdf) = @_;
@@ -36,7 +36,15 @@ sub parse_uri {
 
 sub ua {
     my $self = shift;
-    $self->{_ua} ||= LWP::UserAgent->new(timeout => 30);
+    unless ($self->{_ua}) {
+        $self->{_ua} = LWP::UserAgent->new(timeout => 30);
+        if ($self->http_proxy) {
+            $self->{_ua}->proxy('http',$self->http_proxy);
+        } else {
+            $self->{_ua}->env_proxy;
+        }
+    }
+    return $self->{_ua};
 }
 
 package RDF::Simple::Parser::Handler;
@@ -482,6 +490,11 @@ sub write {
     'base' supplies a base URI 
     for relative URIs found in the document
 
+    'http_proxy' optionally supplies
+    the address of an http proxy server.
+    If this is not given it will try to use 
+    the default environment settings.
+
     
 =head2 parse_rdf($rdf)
 
@@ -511,6 +524,10 @@ sub write {
 =head1 AUTHOR
 
     Jo Walsh <jo@london.pm.org>
+
+=head1 CREDITS 
+
+    thanks to Robert Price for the http_proxy patch
 
 =head1 LICENSE
 

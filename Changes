@@ -1,5 +1,9 @@
 Revision history for Perl module RDF::Simple
 
+0.2 Mon May 24th 20:10:00 UTC
+	- applied patch to deal with parsing URIs via a http_proxy
+	- fixed a serialisato do with generated node ids
+ 
 0.01 Tue Aug  5 23:30:00 2003
 	- original version; created by ExtUtils::ModuleMaker 0.32
 

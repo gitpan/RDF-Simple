@@ -34,7 +34,7 @@ sub make_object {
     my ($self,@triples) = @_;
     my $object;
     my $rdf = $self->ns;
-    my $pref = $self->nodeid_prefix || '_:id';
+    my $pref = $self->nodeid_prefix || '_id:';
     @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
 
     my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
@@ -79,7 +79,11 @@ sub make_object {
             push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
         }
         else {
-            push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
+            # make safe for xml
+            my %escape = ('<'=>'&lt;', '>'=>'&gt;', '&'=>'&amp;', '"'=>'&quot;');
+    	    my $escape_re  = join '|' => keys %escape;
+    	    $statement->[2] =~ s/($escape_re)/$escape{$1}/g;    
+	    push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
         }
     }
     return $object;
@@ -127,10 +131,11 @@ sub ns {
 }
 
 sub used {
-    my ($self, $thing) = @_;
-    my $pref = $self->ns->prefix($thing);
-
-    $self->{_used_entities}->{ $pref } = 1 if $pref;
+    my ($self, $uri) = @_;
+    if ($uri !~ m/^http/) {	
+    	my $pref = $self->ns->prefix($uri);
+	$self->{_used_entities}->{ $pref } = 1 if $pref;
+    }
     return $self->{_used_entities};
 }
 
