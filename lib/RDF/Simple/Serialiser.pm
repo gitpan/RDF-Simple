@@ -34,7 +34,7 @@ sub make_object {
     my ($self,@triples) = @_;
     my $object;
     my $rdf = $self->ns;
-    my $pref = $self->nodeid_prefix || '_id:';
+    my $pref = $self->nodeid_prefix || '_:id';
     @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
 
     my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;

@@ -28,6 +28,7 @@ sub parse_uri {
     };
     warn ($@) if $@;
     if ($rdf) {
+	$self->base($uri);
     	return $self->parse_rdf($rdf);
     }
     return undef;
@@ -44,7 +45,7 @@ use strict;
 use RDF::Simple::NS;
 use Carp;
 use Data::Dumper;
-use Class::MethodMaker get_set => [qw( stack base genID disallowed qnames result )];
+use Class::MethodMaker get_set => [qw( stack base genID disallowed qnames result bnode_absolute_prefix )];
 
 sub addns {
     my ($self,$prefix,$uri) = @_;
@@ -144,9 +145,9 @@ sub bNode {
 #            return $l;
 #        }
 #    }
-    my $g = $self->genID;
-    $self->genID($g+1);
-    return '_:id'.$g;
+    my $n_id = sprintf("_:id%08x%04x", time, int rand 0xFFFF);
+    $n_id = $self->bnode_absolute_prefix.$n_id if $self->bnode_absolute_prefix;
+    return $n_id;
 }
 
 sub literal {
