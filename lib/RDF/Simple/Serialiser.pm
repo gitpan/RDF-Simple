@@ -6,7 +6,7 @@ use RDF::Simple::NS;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
 
-our $VERSION = '0.02';
+our $VERSION = '0.1';
 
 sub serialise {
     my ($self,@triples) = @_;
@@ -35,13 +35,23 @@ sub make_object {
     my $object;
     my $rdf = $self->ns;
     my $pref = $self->nodeid_prefix || '_id:';
-    @triples = map {$_->[1] = $self->ns->qname($_->[1]); $_} @triples;
+    @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
 
     my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
+
+    foreach my $t (@triples) {
+	$self->used($t->[1]); 
+	my $qn = $rdf->qname($t->[0]);
+	if ($qn ne $t->[0]) {
+	    $self->used($qn);
+	}
+    }
+    $self->used('rdf:Description');
 
     # find out if this bag of triples has a Class; generic Description if not
     if ($class) {
         $object->{Class} = $rdf->qname($class->[2]);
+        $self->used( $object->{Class} );
     }
     else {
         $object->{Class} = 'rdf:Description';
@@ -78,7 +88,12 @@ sub make_object {
 sub render {
     my ($self,$template,$data,$out_object) = @_;
     my $tt = $self->tt;
-    $data->{ns} = { $self->ns->lookup };
+    my $used = $self->used;
+    #$data->{ns} = { $self->ns->lookup };
+    my %ns_lookup = $self->ns->lookup;
+    foreach (keys %$used) {
+        $data->{ns}{$_} = $ns_lookup{$_}
+    }
 
     eval {
         $tt->process($template, $data, $out_object);
@@ -111,6 +126,14 @@ sub ns {
     $self->{_rdfns} = RDF::Simple::NS->new;
 }
 
+sub used {
+    my ($self, $thing) = @_;
+    my $pref = $self->ns->prefix($thing);
+
+    $self->{_used_entities}->{ $pref } = 1 if $pref;
+    return $self->{_used_entities};
+}
+
 sub tt {
     my ($self) = @_;
     return $self->{tt} if $self->{tt};
@@ -121,8 +144,9 @@ sub get_template {
 
     my $template = <<'END_TEMPLATE';
 <rdf:RDF
-[% FOREACH key = ns.keys %]
-xmlns:[% key %]="[% ns.$key %]"[% END %]
+[%- FOREACH key = ns.keys %]
+  xmlns:[% key %]="[% ns.$key %]"
+[%- END %]
 >
 [% FOREACH object = objects %]
 <[% object.Class %][% IF object.Uri %] rdf:about="[% object.Uri %]"[% ELSE %] rdf:nodeID="[% object.NodeId %]"[% END %]>
@@ -250,14 +274,17 @@ use base qw(RDF::Simple::Serialiser);
 
 =head1 BUGS
 
-    probably loads, this is a very alpha release. feedback very welcome.
+    Probably still some left, this is a beta release. feedback very welcome.
 
 =head1 NOTES
 
-    i am english, so this is a Serialiser. for our divided friends across the water, RDF::Simple::Serializer will work as an alias to the module, and serialize() does the same as serialise().
+    I am English, so this is a Serialiser. for our divided friends across the water, RDF::Simple::Serializer will work as an alias to the module, and serialize() does the same as serialise().
+ 
+    Neither parser or serialiser makes an effort to differentiate formally between URIs and literals, as is more general RDF practise. This was a conscious effort to keep things simple, but i plan to add a make_life_complex option to both.
 
 =head1 THANKS
 
+    Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches.
 
 =head1 AUTHOR
 

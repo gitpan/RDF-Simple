@@ -2,8 +2,9 @@ package RDF::Simple::Parser;
 
 use strict;
 use XML::SAX qw(Namespaces Validation);
+use LWP::UserAgent;
 
-our $VERSION = '0.04';
+our $VERSION = '0.1';
 
 use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base)];
 
@@ -17,6 +18,24 @@ sub parse_rdf {
     my $parser = $factory->parser(Handler=>$handler);
     $parser->parse_string($rdf);
     return @{ $handler->result };
+}
+
+sub parse_uri {
+    my ($self,$uri) = @_;
+    my $rdf;
+    eval {
+    	$rdf = $self->ua->get($uri)->content;
+    };
+    warn ($@) if $@;
+    if ($rdf) {
+    	return $self->parse_rdf($rdf);
+    }
+    return undef;
+}
+
+sub ua {
+    my $self = shift;
+    $self->{_ua} ||= LWP::UserAgent->new(timeout => 30);
 }
 
 package RDF::Simple::Parser::Handler;
@@ -336,7 +355,8 @@ sub parseTypeCollectionPropertyElt {
 sub emptyPropertyElt {
     my ($self,$e) = @_;
     my $rdf = $self->ns->uri('rdf');
-    my $base = $e->base || $self->base;
+    my $base = $e->base or $self->base;
+    $base ||= '';
     my @keys = keys %{$e->attrs};
     my $ids = $rdf.'ID';
     my ($id) = grep {/$ids/} @keys;
@@ -348,6 +368,7 @@ sub emptyPropertyElt {
     else {
         if ($e->attrs->{$rdf.'resource'}) {
             my $res = $e->attrs->{$rdf.'resource'};
+	    $res ||= '';
             $res = $base.$res if $res !~ m/\:\/\//;
             $r = $self->uri($res);
         }
@@ -468,6 +489,12 @@ sub write {
 
     returns an array of array references which are RDF triples.
 
+=head2 parse_uri($uri)
+
+    accepts a string which is a fully qualified http:// uri
+    at which some valid RDF lives.
+    returns the same thing as parse_rdf
+    
 =head1 NOTES
 
     This parser is a transliteration of 
@@ -478,6 +505,7 @@ sub write {
     Thus the idioms inside are a bit pythonic.
     Most credit for the effort is due to sbp.
     
+
 
 =head1 AUTHOR
 

@@ -5,6 +5,7 @@ use Data::Dumper;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri }];
 
+our $VERSION = '0.1';
 sub from_qname {
     my ($self,$name) = @_;
     my $ns;
@@ -26,6 +27,7 @@ sub qname {
     return $thing;
 }
 
+# Retrieve or add to the entity to namespace lookup hash
 sub lookup {
     my ($self,%add) = @_;
     $self->{_lookup} ||=
@@ -74,13 +76,15 @@ sub namespace_to_entity {
     my ($self,$ns) = @_;
     #$ns =~ s/\#//g;
     my %look = reverse $self->lookup;
-    return $look{$ns};
+    return $look{$ns} if $ns and (exists $look{$ns});
 }
 
-sub deprefix {
+sub prefix {
     my ($self,$string) = @_;
-    my $nsed = $self->dens($string);
-    $nsed =~ s/.+://;
-    return $nsed;
+    if ($string) {
+    	$string =~ s/:.+//;
+    	return $string if $string;
+    }
+    return undef;
 }
 1;
