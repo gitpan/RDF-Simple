@@ -3,7 +3,7 @@ package RDF::Simple::Parser;
 use strict;
 use XML::SAX qw(Namespaces Validation);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base)];
 
@@ -347,7 +347,6 @@ sub emptyPropertyElt {
     else {
         if ($e->attrs->{$rdf.'resource'}) {
             my $res = $e->attrs->{$rdf.'resource'};
-            warn("RES:".$res);
             $res = $base.$res if $res !~ m/\:\/\//;
             $r = $self->uri($res);
         }
