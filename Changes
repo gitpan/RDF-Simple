@@ -1,5 +1,9 @@
 Revision history for Perl module RDF::Simple
 
+0.21 Wed Aug 31 14:16:51 EDT 2005
+    - patch from Aaron Straup Cope to deal with file:// URIs
+    - serialiser sends the <?xml etc header for the sticklers...
+
 0.2 Mon May 24th 20:10:00 UTC
 	- applied patch to deal with parsing URIs via a http_proxy
 	- fixed a serialisato do with generated node ids

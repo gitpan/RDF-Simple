@@ -16,12 +16,8 @@ sub parse_rdf {
     $factory->require_feature(Namespaces);
     my $handler = RDF::Simple::Parser::Handler->new($sink, qnames => 1, base => $self->base );
     my $parser = $factory->parser(Handler=>$handler);
-    eval {	
-    	$parser->parse_string($rdf);
-    };
-    return if $@;	
-    my $result = $handler->result;	
-    return @{ $result } if $result;
+    $parser->parse_string($rdf);
+    return @{ $handler->result };
 }
 
 sub parse_uri {
@@ -528,10 +524,6 @@ sub write {
 =head1 AUTHOR
 
     Jo Walsh <jo@london.pm.org>
-
-=head1 CREDITS 
-
-    thanks to Robert Price for the http_proxy patch
 
 =head1 LICENSE
 

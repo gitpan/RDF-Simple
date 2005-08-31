@@ -2,18 +2,17 @@ package RDF::Simple::Serialiser;
 
 use strict;
 use Template;
-use Storable qw(dclone);
 use RDF::Simple::NS;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
 
-our $VERSION = '0.1';
+our $VERSION = '0.21';
 
 sub serialise {
     my ($self,@triples) = @_;
     my %object_ids;
     foreach (@triples) {
-        push @{$object_ids{$_->[0]}}, dclone $_;
+        push @{$object_ids{$_->[0]}}, $_;
     }
     my @objects;
 
@@ -60,7 +59,7 @@ sub make_object {
 
     # assign identifier as an arbitrary (but resolving) uri
     my $id = $triples[0]->[0];
-    if (($id =~ m/^http/) or ($id =~ m/^\#/)) {
+    if (($id =~ m/^(?:http|file)/) or ($id =~ m/^\#/)) {
         $object->{Uri} = $id;
     }
     else {
@@ -76,7 +75,8 @@ sub make_object {
 	    $statement->[2] =~ s/\W//g;
             push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
         }
-        elsif (($statement->[2] =~ m/^\w+\:/) or ($statement->[2] =~ m/^\#/)) {
+        elsif ((($statement->[2] =~ m/^\w+\:/) and ($statement->[2] !~ m/^\d{2,4}\:\d{2}\:\d{2}/)) or
+	       ($statement->[2] =~ m/^\#/)) {
             push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
         }
         else {
@@ -149,6 +149,7 @@ sub tt {
 sub get_template {
 
     my $template = <<'END_TEMPLATE';
+<?xml version='1.0'?>    
 <rdf:RDF
 [%- FOREACH key = ns.keys %]
   xmlns:[% key %]="[% ns.$key %]"
@@ -290,7 +291,7 @@ use base qw(RDF::Simple::Serialiser);
 
 =head1 THANKS
 
-    Thanks particularly to Tom Hukins, Paul Mison, and Richard Clamp, for providing patches.
+    Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches.
 
 =head1 AUTHOR
 

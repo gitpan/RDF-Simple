@@ -1,17 +1,24 @@
 # -*- perl -*-
 
 # t/002_simple.t - run a simple document through the parser, into the serialiser, back through the parser again
-use lib qw(./lib);
-use Test::More 'no_plan';
+
+use Test::More tests => 2;
 use RDF::Simple::Parser;
 use RDF::Simple::Serialiser;
 
 my $ser = RDF::Simple::Serialiser->new();
 my $par = RDF::Simple::Parser->new();
 
-isa_ok($ser,'RDF::Simple::Serialiser');
+open(FILE,'t/uri_file.rdf') or die "couldnt open t/simple.rdf for testing! $!";
+my $rdf = join('',<FILE>);
+close FILE;
 
-my $uri = 'http://frot.org/simple.rdf';
-my @triples = $par->parse_uri($uri);
+my @triples = $par->parse_rdf($rdf);
 $rdf = $ser->serialise(@triples);
-print $rdf;
+warn($rdf);
+@triples = $par->parse_rdf($rdf);
+
+ok (defined $rdf);
+ok (scalar(@triples) eq 1);
+
+
