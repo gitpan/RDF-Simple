@@ -6,7 +6,7 @@ use RDF::Simple::NS;
 use Class::MethodMaker
   new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 sub serialise {
     my ($self,@triples) = @_;
@@ -59,7 +59,7 @@ sub make_object {
 
     # assign identifier as an arbitrary (but resolving) uri
     my $id = $triples[0]->[0];
-    if (($id =~ m/^(?:http|file)/) or ($id =~ m/^\#/)) {
+    if (($id =~ m/^(?:http|file|(?:x-)?urn)/) or ($id =~ m/^\#/)) {
         $object->{Uri} = $id;
     }
     else {
@@ -75,7 +75,7 @@ sub make_object {
 	    $statement->[2] =~ s/\W//g;
             push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
         }
-        elsif ((($statement->[2] =~ m/^\w+\:/) and ($statement->[2] !~ m/^\d{2,4}\:\d{2}\:\d{2}/)) or
+        elsif ((($statement->[2] =~ m/^(?:\w|-)+\:/) and ($statement->[2] !~ m/^\d{2,4}(?:\:|-)\d{2}(?:\:|-)\d{2}/)) or
 	       ($statement->[2] =~ m/^\#/)) {
             push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
         }
