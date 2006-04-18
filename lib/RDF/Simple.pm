@@ -2,7 +2,7 @@
 package RDF::Simple;
 use strict;
 
-our $VERSION = 0.22;
+our $VERSION = 0.3;
 
 sub new
 {
@@ -58,7 +58,7 @@ RDF::Simple - read and write RDF without complication
 
 =head1 THANKS
 
-    Sean Palmer, Paul Mison, Matt Biddulph, Aaron Straup Cope 
+    Sean Palmer, Paul Mison, Matt Biddulph 
 
     Openmute - http://www.metamute.com - for general support
 	

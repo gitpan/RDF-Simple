@@ -11,7 +11,7 @@ my $par = RDF::Simple::Parser->new();
 
 isa_ok($ser,'RDF::Simple::Serialiser');
 
-my $uri = 'http://frot.org/simple.rdf';
+my $uri = 'http://frot.org/foaf.rdf';
 my @triples = $par->parse_uri($uri);
 $rdf = $ser->serialise(@triples);
 print $rdf;

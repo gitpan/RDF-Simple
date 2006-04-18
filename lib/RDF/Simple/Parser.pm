@@ -4,9 +4,32 @@ use strict;
 use XML::SAX qw(Namespaces Validation);
 use LWP::UserAgent;
 
-our $VERSION = '0.2';
+our $VERSION = '0.3';
 
-use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(base http_proxy)];
+sub _make_method {
+	my ($class, @methods) = @_;
+	my $p = (caller())[0];
+	for my $method (@methods) {
+		no strict 'refs';
+		*{"$p\::$method"} = sub {
+			my $self = shift;
+			my $arg = shift;
+#			warn($method,$arg);
+			
+			$self->{$method} = $arg if defined $arg;
+			return $self->{$method};
+		};
+	}
+}
+
+__PACKAGE__->_make_method(qw( base http_proxy ));
+
+sub new {
+        my $class = shift;
+        my %p = @_;
+        return bless \%p, ref $class || $class;
+}
+
 
 sub parse_rdf {
     my ($self,$rdf) = @_;
@@ -53,7 +76,9 @@ use strict;
 use RDF::Simple::NS;
 use Carp;
 use Data::Dumper;
-use Class::MethodMaker get_set => [qw( stack base genID disallowed qnames result bnode_absolute_prefix )];
+
+RDF::Simple::Parser->_make_method(
+	qw( stack base genID disallowed qnames result bnode_absolute_prefix ));
 
 sub addns {
     my ($self,$prefix,$uri) = @_;
@@ -411,8 +436,10 @@ sub emptyPropertyElt {
 
 package RDF::Simple::Parser::Element;
 
-use Class::MethodMaker get_set => [qw( base subject language URI qname attrs parent children xtext text )];
 use Data::Dumper;
+
+RDF::Simple::Parser->_make_method(
+	qw( base subject language URI qname attrs parent children xtext text ));
 
 sub new {
     my ($class,$ns,$prefix,$name,$parent,$attrs,%p) = @_;
@@ -430,9 +457,10 @@ sub new {
 }
 
 package RDF::Simple::Parser::Attribs;
-use Class::MethodMaker get_set => [qw( qnames x )];
 use Data::Dumper;
 use Carp;
+
+RDF::Simple::Parser->_make_method(qw( qnames x ));
 
 sub new {
     my ($class, $attrs) = @_;
@@ -448,7 +476,15 @@ sub new {
 
 package RDF::Simple::Parser::Sink;
 
-use Class::MethodMaker new_hash_init => 'new', get_set => [ qw(result) ];
+RDF::Simple::Parser->_make_method( 'result' );
+
+
+sub new {
+        my $class = shift;
+        my %p = @_;
+        return bless \%p, ref $class || $class;
+}
+
 
 sub write {
     my $self = shift;

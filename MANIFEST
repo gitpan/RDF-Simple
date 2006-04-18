@@ -11,7 +11,7 @@ t/001_load.t
 t/002_simple.t
 t/003_uri.t
 t/004_uri_file.t
-t/simple.rdf
 t/uri_file.rdf
+t/simple.rdf
 Makefile.PL
 META.yml                                 Module meta-data (added by MakeMaker)

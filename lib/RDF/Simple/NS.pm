@@ -1,11 +1,22 @@
 package RDF::Simple::NS;
 
 use strict;
-use Data::Dumper;
-use Class::MethodMaker
-  new_hash_init => 'new', get_set => [ qw{ baseuri }];
 
-our $VERSION = '0.1';
+our $VERSION = '0.3';
+
+sub new {
+        my $class = shift;
+        my %p = @_;
+        return bless \%p, ref $class || $class;
+}
+
+sub baseuri {
+        my $self = shift;
+        my $baseuri = shift;
+        $self->{baseuri} ||= $baseuri;
+        return $self->{baseuri};
+}
+
 sub from_qname {
     my ($self,$name) = @_;
     my $ns;
@@ -87,4 +98,39 @@ sub prefix {
     }
     return undef;
 }
+
+=head1 RDF::Simple::NS 
+
+=head1 DESCRIPTION
+
+A utility class to help deal with RDF namespaces
+(converting between short (qualified) names
+and full URLs for XML namespaces.
+
+=head1 SYNOPSIS
+
+	my $ns = RDF::Simple::NS->new;
+	$ns->lookup('foaf'=>'http://xmlns.com/foaf/0.1/');
+
+=head2 METHODS
+
+=head3 from_qname 
+
+=head3 qname
+
+=head3 lookup
+	
+	$ns->lookup('short name'=>'http://full.path.to/namespace#');
+
+Add an alias for a namespace (this will be used in the serialisation)
+
+=head3 entity_to_namespace
+
+=head3 uri 
+
+=head3 namespace_to_entity 
+
+=head3 prefix 
+
+
 1;

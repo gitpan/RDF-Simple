@@ -1,12 +1,36 @@
 package RDF::Simple::Serialiser;
 
 use strict;
-use Template;
 use RDF::Simple::NS;
-use Class::MethodMaker
-  new_hash_init => 'new', get_set => [ qw{ baseuri path nodeid_prefix}];
 
-our $VERSION = '0.22';
+our $VERSION = '0.3';
+
+sub new {
+	my $class = shift;
+	my %p = @_;
+	return bless \%p, ref $class || $class; 
+}
+
+sub baseuri {
+	my $self = shift;
+	my $baseuri = shift;
+	$self->{baseuri} ||= $baseuri;
+	return $self->{baseuri};
+}
+
+sub path {
+        my $self = shift;
+        my $path = shift;
+        $self->{path} ||= $path;
+        return $self->{path};
+}
+
+sub nodeid_prefix {
+        my $self = shift;
+        my $nodeid_prefix = shift;
+        $self->{nodeid_prefix} ||= $nodeid_prefix;
+        return $self->{nodeid_prefix};
+}
 
 sub serialise {
     my ($self,@triples) = @_;
@@ -20,9 +44,14 @@ sub serialise {
         push @objects, $self->make_object(@{$object_ids{$k}});
     }
 
-    my $out;
-    $self->render($self->get_template,{objects => \@objects},\$out);
-    return $out;
+    my %ns_lookup = $self->ns->lookup;
+    my %ns = ();
+    my $used = $self->used;
+    foreach (keys %$used) {
+        $ns{$_} = $ns_lookup{$_};
+    }
+    my $xml = $self->render_rdfxml(\@objects,\%ns);	
+    return $xml;	
 }
 
 sub serialize {
@@ -62,6 +91,7 @@ sub make_object {
     if (($id =~ m/^(?:http|file|(?:x-)?urn)/) or ($id =~ m/^\#/)) {
         $object->{Uri} = $id;
     }
+
     else {
         $id =~ s/^[^a..Z]/a/; # stupid xml naming conventions
         $id =~ s/\W//g;
@@ -75,8 +105,7 @@ sub make_object {
 	    $statement->[2] =~ s/\W//g;
             push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
         }
-        elsif ((($statement->[2] =~ m/^(?:\w|-)+\:/) and ($statement->[2] !~ m/^\d{2,4}(?:\:|-)\d{2}(?:\:|-)\d{2}/)) or
-	       ($statement->[2] =~ m/^\#/)) {
+        elsif (($statement->[2] =~ m/^\w+\:/) or ($statement->[2] =~ m/^\#/)) {
             push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
         }
         else {
@@ -133,23 +162,16 @@ sub ns {
 
 sub used {
     my ($self, $uri) = @_;
-    if ($uri and ($uri !~ m/^http/)) {	
+    if (defined $uri and ($uri !~ m/^http/)) {	
     	my $pref = $self->ns->prefix($uri);
 	$self->{_used_entities}->{ $pref } = 1 if $pref;
     }
     return $self->{_used_entities};
 }
 
-sub tt {
-    my ($self) = @_;
-    return $self->{tt} if $self->{tt};
-    $self->{tt} = Template->new();
-}
-
 sub get_template {
 
     my $template = <<'END_TEMPLATE';
-<?xml version='1.0'?>    
 <rdf:RDF
 [%- FOREACH key = ns.keys %]
   xmlns:[% key %]="[% ns.$key %]"
@@ -172,6 +194,48 @@ END_TEMPLATE
     return \$template;
 }
 
+sub render_rdfxml {
+	# this messy method replaces the old Template Toolkit serialisation very quickly.
+	my ($self,$objects,$ns) = @_;
+
+	#my $xml = "<?xml version=\"1.0\"?>\n<rdf:RDF\n";
+	my $xml = "<rdf:RDF\n";
+	foreach my $n (keys %$ns) {
+		$xml .= 'xmlns:'.$n.'="'.$ns->{$n}."\"\n";
+	}
+	$xml .= ">\n";
+	foreach my $object (@$objects) {
+		$xml .= '<'.$object->{Class}; 
+		if ($object->{Uri}) {
+			$xml .= ' rdf:about="'.$object->{Uri}.'"';
+		}	
+		else {
+			$xml .= ' rdf:nodeID="'.$object->{NodeId}.'"';
+		}
+		$xml .= ">\n";
+		foreach my $l (keys %{$object->{literal}}) {
+			foreach my $prop (@{$object->{literal}->{$l}}) {
+				$xml .= '<'.$l.'>'.$prop.'</'.$l.'>'."\n";
+			}
+		}
+		foreach my $l (keys %{$object->{resource}}) {
+			foreach my $prop (@{$object->{resource}->{$l}}) {
+
+                        	$xml .= '<'.$l.' rdf:resource="'.$prop.'"/>'."\n";
+                	}
+		}
+		foreach my $l (keys %{$object->{nodeid}}) {
+			foreach my $prop (@{$object->{nodeid}->{$l}}) {
+
+                		$xml .= '<'.$l.' rdf:nodeID="'.$prop.'"/>'."\n";	
+			}
+		}
+		$xml .= '</'.$object->{Class}.">\n";
+
+	}
+	$xml .= "</rdf:RDF>\n";
+	return $xml;
+}
 
 package RDF::Simple::Serializer;
 
