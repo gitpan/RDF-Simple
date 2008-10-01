@@ -2,7 +2,7 @@
 package RDF::Simple;
 use strict;
 
-our $VERSION = 0.3;
+our $VERSION = 0.301;
 
 sub new
 {

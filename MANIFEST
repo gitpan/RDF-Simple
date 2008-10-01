@@ -1,17 +1,15 @@
-MANIFEST
-LICENSE
-README
-Todo
 Changes
 lib/RDF/Simple.pm
 lib/RDF/Simple/NS.pm
-lib/RDF/Simple/Serialiser.pm
 lib/RDF/Simple/Parser.pm
+lib/RDF/Simple/Serialiser.pm
+LICENSE
+MANIFEST			This list of files
+META.yml
+README
 t/001_load.t
 t/002_simple.t
-t/003_uri.t
 t/004_uri_file.t
-t/uri_file.rdf
 t/simple.rdf
-Makefile.PL
-META.yml                                 Module meta-data (added by MakeMaker)
+t/uri_file.rdf
+Todo
