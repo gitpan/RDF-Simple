@@ -1,3 +1,7 @@
+2008-10-05  Kingpin  <Martin@BLUEMAX>
+
+	* Makefile.PL: converted to Module::Install
+
 Revision history for Perl module RDF::Simple
 
 0.3 18th April 2006
