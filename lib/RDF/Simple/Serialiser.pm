@@ -1,9 +1,13 @@
+
+# $Id: Serialiser.pm,v 1.4 2008/10/05 19:07:36 Martin Exp $
+
 package RDF::Simple::Serialiser;
 
 use strict;
 use RDF::Simple::NS;
 
-our $VERSION = '0.3';
+our
+$VERSION = do { my @r = (q$Revision: 1.4 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub new {
 	my $class = shift;
@@ -237,11 +241,6 @@ sub render_rdfxml {
 	return $xml;
 }
 
-package RDF::Simple::Serializer;
-
-use base qw(RDF::Simple::Serialiser);
-
-1;
 
 
 =head1 NAME
@@ -345,7 +344,7 @@ use base qw(RDF::Simple::Serialiser);
 
 =head1 BUGS
 
-    Probably still some left, this is a beta release. feedback very welcome.
+Please report bugs via the RT web site L<http://rt.cpan.org/Ticket/Create.html?Queue=RDF-Simple>
 
 =head1 NOTES
 

@@ -1,10 +1,14 @@
+
+# $Id: Parser.pm,v 1.3 2008/10/05 19:09:32 Martin Exp $
+
 package RDF::Simple::Parser;
 
 use strict;
 use XML::SAX qw(Namespaces Validation);
 use LWP::UserAgent;
 
-our $VERSION = '0.3';
+our
+$VERSION = do { my @r = (q$Revision: 1.3 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub _make_method {
 	my ($class, @methods) = @_;
@@ -15,7 +19,6 @@ sub _make_method {
 			my $self = shift;
 			my $arg = shift;
 #			warn($method,$arg);
-			
 			$self->{$method} = $arg if defined $arg;
 			return $self->{$method};
 		};
@@ -376,7 +379,7 @@ sub parseTypeCollectionPropertyElt {
             $self->triple($n,$self->uri($rdf.'type'),$self->uri($rdf.'List'));
         }
         for (0 .. $#s) {
-            $self->triple($s[$_],$self->uri($rdf.'first'),$e->children->[1]->subject);
+            $self->triple($s[$_],$self->uri($rdf.'first'),$e->children->[$_]->subject);
         }
         for (0 .. ($#s-1)) {
             $self->triple($s[$_],$self->uri($rdf.'rest'),$s[$_+1]);
@@ -492,78 +495,76 @@ sub write {
 
 }
 
-
 1;
 
 =head1 NAME
 
-    RDF::Simple::Parser
+RDF::Simple::Parser
 
 =head1 DESCRIPTION
 
-    a simple RDF/XML parser - 
-    reads a string containing RDF in XML
-    returns a 'bucket-o-triples' (array of arrays)
-
+A simple RDF/XML parser - 
+reads a string containing RDF in XML
+returns a 'bucket-o-triples' (array of arrays)
 
 =head1 SYNOPSIS
 
-    my $uri = 'http://www.zooleika.org.uk/bio/foaf.rdf';
-    my $rdf = LWP::Simple::get($uri);
- 
-    my $parser = RDF::Simple::Parser->new(base => $uri)
-    my @triples = $parser->parse_rdf($rdf);
-    
-    # returns an array of array references which are triples
+  my $uri = 'http://www.zooleika.org.uk/bio/foaf.rdf';
+  my $rdf = LWP::Simple::get($uri);
+  my $parser = RDF::Simple::Parser->new(base => $uri)
+  my @triples = $parser->parse_rdf($rdf);
 
+# returns an array of array references which are triples
 
-=head1 METHODS 
+=head1 METHODS
 
 =head2 new( [ base => 'http://example.com/foo.rdf' ])
 
-    create a new RDF::Simple::Parser
-    
-    'base' supplies a base URI 
-    for relative URIs found in the document
+Create a new RDF::Simple::Parser
 
-    'http_proxy' optionally supplies
-    the address of an http proxy server.
-    If this is not given it will try to use 
-    the default environment settings.
+'base' supplies a base URI 
+for relative URIs found in the document
 
-    
+'http_proxy' optionally supplies
+the address of an http proxy server.
+If this is not given it will try to use 
+the default environment settings.
+
+
 =head2 parse_rdf($rdf)
 
-    accepts a string which is an RDF/XML document
-    (complete XML, with headers)
+Accepts a string which is an RDF/XML document
+(complete XML, with headers)
 
-    returns an array of array references which are RDF triples.
+Returns an array of array references which are RDF triples.
 
 =head2 parse_uri($uri)
 
-    accepts a string which is a fully qualified http:// uri
-    at which some valid RDF lives.
-    returns the same thing as parse_rdf
-    
+Accepts a string which is a fully qualified http:// uri
+at which some valid RDF lives.
+returns the same thing as parse_rdf
+
 =head1 NOTES
 
-    This parser is a transliteration of 
-    Sean B Palmer's python RDF/XML parser:
+This parser is a transliteration of 
+Sean B Palmer's python RDF/XML parser:
 
-    http://www.infomesh.net/2003/rdfparser/    
+http://www.infomesh.net/2003/rdfparser/
 
-    Thus the idioms inside are a bit pythonic.
-    Most credit for the effort is due to sbp.
-    
+Thus the idioms inside are a bit pythonic.
+Most credit for the effort is due to sbp.
 
+=head1 BUGS
+
+Please report bugs via the RT web site L<http://rt.cpan.org/Ticket/Create.html?Queue=RDF-Simple>
 
 =head1 AUTHOR
 
-    Jo Walsh <jo@london.pm.org>
+Jo Walsh <jo@london.pm.org>
 
 =head1 LICENSE
 
-   this module is available under the same terms as perl itself
+This module is available under the same terms as perl itself
 
 =cut
 

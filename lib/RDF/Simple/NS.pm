@@ -21,7 +21,7 @@ sub from_qname {
     my ($self,$name) = @_;
     my $ns;
     if (($name =~ m/\:/) and ($name !~ m/^http/))  {
-        my ($space,$n) = split(':',$name);
+        my ($space,$n) = split(/:/,$name);
         $ns = $self->entity_to_namespace($space);
         $name = $n;
     }
@@ -97,9 +97,11 @@ sub prefix {
     	return $string if $string;
     }
     return undef;
-}
+} # prefix
 
-=head1 RDF::Simple::NS 
+1;
+
+=head1 RDF::Simple::NS
 
 =head1 DESCRIPTION
 
@@ -114,23 +116,20 @@ and full URLs for XML namespaces.
 
 =head2 METHODS
 
-=head3 from_qname 
+=head3 from_qname
 
 =head3 qname
 
 =head3 lookup
-	
-	$ns->lookup('short name'=>'http://full.path.to/namespace#');
+
+  $ns->lookup('short name'=>'http://full.path.to/namespace#');
 
 Add an alias for a namespace (this will be used in the serialisation)
 
 =head3 entity_to_namespace
 
-=head3 uri 
+=head3 uri
 
-=head3 namespace_to_entity 
+=head3 namespace_to_entity
 
-=head3 prefix 
-
-
-1;
+=head3 prefix

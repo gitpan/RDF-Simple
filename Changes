@@ -1,5 +1,9 @@
 2008-10-05  Kingpin  <Martin@BLUEMAX>
 
+	* lib/RDF/Simple/Parser.pm (parseTypeCollectionPropertyElt): applied fix described in RT ticket 25302
+
+	* lib/RDF/Simple/Serializer.pm: new file
+
 	* Makefile.PL: converted to Module::Install
 
 Revision history for Perl module RDF::Simple
