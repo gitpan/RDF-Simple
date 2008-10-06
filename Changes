@@ -1,5 +1,9 @@
 2008-10-05  Kingpin  <Martin@BLUEMAX>
 
+	* lib/RDF/Simple/Serialiser.pm (make_object): fixed for RT ticket 29067
+	(make_object): fixed for RT ticket 35484
+	(make_object): fixed for RT ticket 37335
+
 	* lib/RDF/Simple/Parser.pm (parseTypeCollectionPropertyElt): applied fix described in RT ticket 25302
 
 	* lib/RDF/Simple/Serializer.pm: new file

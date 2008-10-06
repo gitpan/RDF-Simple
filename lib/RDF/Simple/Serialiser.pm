@@ -1,13 +1,14 @@
 
-# $Id: Serialiser.pm,v 1.4 2008/10/05 19:07:36 Martin Exp $
+# $Id: Serialiser.pm,v 1.6 2008/10/06 00:37:00 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
 use strict;
 use RDF::Simple::NS;
+use Regexp::Common qw(URI);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.4 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.6 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub new {
 	my $class = shift;
@@ -54,8 +55,8 @@ sub serialise {
     foreach (keys %$used) {
         $ns{$_} = $ns_lookup{$_};
     }
-    my $xml = $self->render_rdfxml(\@objects,\%ns);	
-    return $xml;	
+    my $xml = $self->render_rdfxml(\@objects,\%ns);
+    return $xml;
 }
 
 sub serialize {
@@ -63,65 +64,95 @@ sub serialize {
     return $self->serialise(@_);
 }
 
-sub make_object {
-    my ($self,@triples) = @_;
-    my $object;
-    my $rdf = $self->ns;
-    my $pref = $self->nodeid_prefix || '_id:';
-    @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
-
-    my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
-
-    foreach my $t (@triples) {
-	$self->used($t->[1]); 
-	my $qn = $rdf->qname($t->[0]);
-	if ($qn ne $t->[0]) {
-	    $self->used($qn);
-	}
+sub make_object
+  {
+  my $self = shift;
+  # Make a copy of our array-ref arguments, so we can modify them
+  # locally:
+  my @triples;
+  foreach my $ra (@_)
+    {
+    push @triples, [@$ra];
+    } # foreach
+  my $object;
+  my $rdf = $self->ns;
+  @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
+  my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
+  foreach my $t (@triples)
+    {
+    $self->used($t->[1]);
+    my $qn = $rdf->qname($t->[0]);
+    if ($qn ne $t->[0])
+      {
+      $self->used($qn);
+      } # if
+    } # foreach
+  $self->used('rdf:Description');
+  if ($class)
+    {
+    # This bag of triples has a Class
+    $object->{Class} = $rdf->qname($class->[2]);
+    $self->used( $object->{Class} );
     }
-    $self->used('rdf:Description');
+  else
+    {
+    # This bag of triples needs a generic Description Class:
+    $object->{Class} = 'rdf:Description';
+    }
+  # Assign identifier as an arbitrary (but resolving) uri
+  my $id = $triples[0]->[0];
+  if (
+      $self->_looks_like_uri($id)
+      ||
+      ($id =~ m/^\#/)
+     )
+    {
+    $object->{Uri} = $id;
+    } # if
+  else
+    {
+    $id =~ s/\A[^a-zA-Z]/a/; # stupid xml naming conventions
+    $id =~ s/\W//g;
+    $object->{NodeId} = $id;
+    }
+  my $pref = $self->nodeid_prefix || '_id:';
+  foreach my $statement (@triples)
+    {
+    next if $statement->[1] eq 'rdf:type';
+    if ($statement->[2] =~ m/^$pref/)
+      {
+      $statement->[2] =~ s/\A[^a-zA-Z]/a/;
+      $statement->[2] =~ s/\W//g;
+      push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
+      } # if
+    elsif (
+           $self->_looks_like_uri($statement->[2])
+           ||
+           ($statement->[2] =~ m/^\#/)
+          )
+      {
+      push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
+      }
+    else
+      {
+      # make safe for xml
+      my %escape = ('<'=>'&lt;', '>'=>'&gt;', '&'=>'&amp;', '"'=>'&quot;');
+      my $escape_re  = join '|' => keys %escape;
+      $statement->[2] =~ s/($escape_re)/$escape{$1}/g;    
+      push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
+      }
+    } # foreach
+  return $object;
+  } # make_object
 
-    # find out if this bag of triples has a Class; generic Description if not
-    if ($class) {
-        $object->{Class} = $rdf->qname($class->[2]);
-        $self->used( $object->{Class} );
-    }
-    else {
-        $object->{Class} = 'rdf:Description';
-    }
 
-    # assign identifier as an arbitrary (but resolving) uri
-    my $id = $triples[0]->[0];
-    if (($id =~ m/^(?:http|file|(?:x-)?urn)/) or ($id =~ m/^\#/)) {
-        $object->{Uri} = $id;
-    }
+sub _looks_like_uri
+  {
+  my $self = shift;
+  my $s = shift || '';
+  return ($s =~ m/$RE{URI}/)
+  } # _looks_like_uri
 
-    else {
-        $id =~ s/^[^a..Z]/a/; # stupid xml naming conventions
-        $id =~ s/\W//g;
-	$object->{NodeId} = $id;
-    }
-
-    foreach my $statement (@triples) {
-        next if $statement->[1] eq 'rdf:type';
-        if ($statement->[2] =~ m/^$pref/) {
-            $statement->[2] =~ s/^[^a..Z]/a/;
-	    $statement->[2] =~ s/\W//g;
-            push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
-        }
-        elsif (($statement->[2] =~ m/^\w+\:/) or ($statement->[2] =~ m/^\#/)) {
-            push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
-        }
-        else {
-            # make safe for xml
-            my %escape = ('<'=>'&lt;', '>'=>'&gt;', '&'=>'&amp;', '"'=>'&quot;');
-    	    my $escape_re  = join '|' => keys %escape;
-    	    $statement->[2] =~ s/($escape_re)/$escape{$1}/g;    
-	    push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
-        }
-    }
-    return $object;
-}
 
 sub render {
     my ($self,$template,$data,$out_object) = @_;
