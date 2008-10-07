@@ -3,6 +3,7 @@ inc/Module/Install.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
 inc/Module/Install/Fetch.pm
+inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
@@ -12,12 +13,14 @@ lib/RDF/Simple/Parser.pm
 lib/RDF/Simple/Serialiser.pm
 lib/RDF/Simple/Serializer.pm
 LICENSE
+Makefile.PL
 MANIFEST			This list of files
 META.yml
 README
 t/001_load.t
 t/002_simple.t
 t/004_uri_file.t
+t/pod.t
 t/simple.rdf
 t/uri_file.rdf
 Todo
