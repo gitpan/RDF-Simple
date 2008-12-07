@@ -1,70 +1,119 @@
 
-# $Id: Serialiser.pm,v 1.6 2008/10/06 00:37:00 Martin Exp $
+# $Id: Serialiser.pm,v 1.7 2008/12/07 03:37:11 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
 use strict;
+
+=head1 NAME
+
+RDF::Simple::Serialiser - convert array of tripes to RDF string
+
+=head1 DESCRIPTION
+
+A simple RDF serialiser.
+Accepts an array of triples, returns a serialised RDF document.
+
+=head1 SYNOPSIS
+
+    my $ser = RDF::Simple::Serialiser->new;
+    my @triples = (
+                   ['http://example.com/url#', 'dc:creator', 'zool@example.com'],
+                   ['http://example.com/url#', 'foaf:Topic', '_id:1234'],
+                   ['_id:1234','http://www.w3.org/2003/01/geo/wgs84_pos#lat','51.334422']
+                   );
+    my $rdf = $ser->serialise(@triples);
+
+    ## Supply your own bNode id prefix, add namespaces:
+    my $ser = RDF::Simple::Serialiser->new( nodeid_prefix => 'a:' );
+    $ser->addns( foaf => 'http://xmlns.com/foaf/0.1/' );
+    my $node1 = $ser->genid;
+    my $node2 = $ser->genid;
+    my @triples = (
+                   [$node1, 'foaf:name', 'Jo Walsh'],
+                   [$node1, 'foaf:knows', $node2],
+                   [$node2, 'foaf:name', 'Robin Berjon'],
+                   [$node1, 'rdf:type', 'foaf:Person'],
+                   [$node2, 'rdf:type','http://xmlns.com/foaf/0.1/Person']
+                   );
+    my $rdf = $ser->serialise(@triples);
+
+    ## Round-trip example:
+    my $parser = RDF::Simple::Parser->new();
+    my $rdf = LWP::Simple::get('http://www.zooleika.org.uk/foaf.rdf');
+    my @triples = $parser->parse_rdf($rdf);
+    my $new_rdf = $serialiser->serialise(@triples);
+
+
+=head1 METHODS
+
+=over
+
+=cut
+
 use RDF::Simple::NS;
 use Regexp::Common qw(URI);
+use Class::MakeMethods::Standard::Hash (
+                                        new => 'new',
+                                        scalar => [ qw( baseuri path nodeid_prefix qqq ) ],
+                                       );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.6 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.7 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
-sub new {
-	my $class = shift;
-	my %p = @_;
-	return bless \%p, ref $class || $class; 
-}
+=item new( [ nodeid_prefix => 'prefix' ])
 
-sub baseuri {
-	my $self = shift;
-	my $baseuri = shift;
-	$self->{baseuri} ||= $baseuri;
-	return $self->{baseuri};
-}
+=cut
 
-sub path {
-        my $self = shift;
-        my $path = shift;
-        $self->{path} ||= $path;
-        return $self->{path};
-}
+=item serialise( @triples )
 
-sub nodeid_prefix {
-        my $self = shift;
-        my $nodeid_prefix = shift;
-        $self->{nodeid_prefix} ||= $nodeid_prefix;
-        return $self->{nodeid_prefix};
-}
+Accepts a 'bucket of triples'
+(an array of array references which are 'subject, predicate, object' statements)
+and returns a serialised RDF document.
 
-sub serialise {
-    my ($self,@triples) = @_;
-    my %object_ids;
-    foreach (@triples) {
-        push @{$object_ids{$_->[0]}}, $_;
-    }
-    my @objects;
+If 'rdf:type' is not provided for a subject,
+the generic node type 'rdf:Description' is used.
 
-    foreach my $k (keys %object_ids) {
-        push @objects, $self->make_object(@{$object_ids{$k}});
-    }
+=cut
 
-    my %ns_lookup = $self->ns->lookup;
-    my %ns = ();
-    my $used = $self->used;
-    foreach (keys %$used) {
-        $ns{$_} = $ns_lookup{$_};
-    }
-    my $xml = $self->render_rdfxml(\@objects,\%ns);
-    return $xml;
-}
+sub serialise
+  {
+  my ($self,@triples) = @_;
+  my %object_ids;
+  foreach (@triples)
+    {
+    push @{$object_ids{$_->[0]}}, $_;
+    } # foreach
+  my @objects;
+  foreach my $k (keys %object_ids)
+    {
+    push @objects, $self->_make_object(@{$object_ids{$k}});
+    } # foreach
+  my %ns_lookup = $self->_ns->lookup;
+  my %ns = ();
+  my $used = $self->_used;
+  foreach (keys %$used)
+    {
+    $ns{$_} = $ns_lookup{$_};
+    } # foreach
+  my $xml = $self->render(\@objects, \%ns);
+  return $xml;
+  } # serialise
 
-sub serialize {
-    my $self = shift;
-    return $self->serialise(@_);
-}
 
-sub make_object
+=item serialize
+
+A synonym for serialise() for American users.
+
+=cut
+
+sub serialize
+  {
+  my $self = shift;
+  return $self->serialise(@_);
+  } # serialize
+
+sub _make_object
   {
   my $self = shift;
   # Make a copy of our array-ref arguments, so we can modify them
@@ -75,24 +124,24 @@ sub make_object
     push @triples, [@$ra];
     } # foreach
   my $object;
-  my $rdf = $self->ns;
+  my $rdf = $self->_ns;
   @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
   my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
   foreach my $t (@triples)
     {
-    $self->used($t->[1]);
+    $self->_used($t->[1]);
     my $qn = $rdf->qname($t->[0]);
     if ($qn ne $t->[0])
       {
-      $self->used($qn);
+      $self->_used($qn);
       } # if
     } # foreach
-  $self->used('rdf:Description');
+  $self->_used('rdf:Description');
   if ($class)
     {
     # This bag of triples has a Class
     $object->{Class} = $rdf->qname($class->[2]);
-    $self->used( $object->{Class} );
+    $self->_used( $object->{Class} );
     }
   else
     {
@@ -143,7 +192,7 @@ sub make_object
       }
     } # foreach
   return $object;
-  } # make_object
+  } # _make_object
 
 
 sub _looks_like_uri
@@ -154,210 +203,15 @@ sub _looks_like_uri
   } # _looks_like_uri
 
 
-sub render {
-    my ($self,$template,$data,$out_object) = @_;
-    my $tt = $self->tt;
-    my $used = $self->used;
-    #$data->{ns} = { $self->ns->lookup };
-    my %ns_lookup = $self->ns->lookup;
-    foreach (keys %$used) {
-        $data->{ns}{$_} = $ns_lookup{$_}
-    }
-
-    eval {
-        $tt->process($template, $data, $out_object);
-    };
-    if (my $error = $tt->error()) {
-        warn "error info: ", $error->info(), "\n";
-        warn $tt->error();
-    }
-    warn($@) if ($@);
-}
-
-##
-
-sub addns {
-    my ($self, %p) = @_;
-    return $self->ns->lookup(%p);
-}
-
-sub genid {
-    my $self = shift;
-    my $prefix = $self->nodeid_prefix || '_id:';
-    my @num = (0..9);
-    my $string = join '', (map { @num[rand @num] } 0..7);
-    return $prefix.$string;
-}
-
-sub ns {
-    my $self = shift;
-    return $self->{_rdfns} if $self->{_rdfns};
-    $self->{_rdfns} = RDF::Simple::NS->new;
-}
-
-sub used {
-    my ($self, $uri) = @_;
-    if (defined $uri and ($uri !~ m/^http/)) {	
-    	my $pref = $self->ns->prefix($uri);
-	$self->{_used_entities}->{ $pref } = 1 if $pref;
-    }
-    return $self->{_used_entities};
-}
-
-sub get_template {
-
-    my $template = <<'END_TEMPLATE';
-<rdf:RDF
-[%- FOREACH key = ns.keys %]
-  xmlns:[% key %]="[% ns.$key %]"
-[%- END %]
->
-[% FOREACH object = objects %]
-<[% object.Class %][% IF object.Uri %] rdf:about="[% object.Uri %]"[% ELSE %] rdf:nodeID="[% object.NodeId %]"[% END %]>
-    [% FOREACH lit = object.literal.keys %][% FOREACH prop = object.literal.$lit %]
-    <[% lit %]>[% prop %]</[% lit %]>[% END %][% END %][% FOREACH res = object.resource.keys %][% FOREACH prop = object.resource.$res %]
-    <[% res %] rdf:resource="[% prop %]"/>[% END %][% END %][% FOREACH node = object.nodeid.keys %][% FOREACH prop = object.nodeid.$node %]
-    <[% node %] rdf:nodeID="[% prop %]"/>[% END %][% END %]
-
-</[% object.Class %]>
-[% END %]
-
-</rdf:RDF>
-
-END_TEMPLATE
-
-    return \$template;
-}
-
-sub render_rdfxml {
-	# this messy method replaces the old Template Toolkit serialisation very quickly.
-	my ($self,$objects,$ns) = @_;
-
-	#my $xml = "<?xml version=\"1.0\"?>\n<rdf:RDF\n";
-	my $xml = "<rdf:RDF\n";
-	foreach my $n (keys %$ns) {
-		$xml .= 'xmlns:'.$n.'="'.$ns->{$n}."\"\n";
-	}
-	$xml .= ">\n";
-	foreach my $object (@$objects) {
-		$xml .= '<'.$object->{Class}; 
-		if ($object->{Uri}) {
-			$xml .= ' rdf:about="'.$object->{Uri}.'"';
-		}	
-		else {
-			$xml .= ' rdf:nodeID="'.$object->{NodeId}.'"';
-		}
-		$xml .= ">\n";
-		foreach my $l (keys %{$object->{literal}}) {
-			foreach my $prop (@{$object->{literal}->{$l}}) {
-				$xml .= '<'.$l.'>'.$prop.'</'.$l.'>'."\n";
-			}
-		}
-		foreach my $l (keys %{$object->{resource}}) {
-			foreach my $prop (@{$object->{resource}->{$l}}) {
-
-                        	$xml .= '<'.$l.' rdf:resource="'.$prop.'"/>'."\n";
-                	}
-		}
-		foreach my $l (keys %{$object->{nodeid}}) {
-			foreach my $prop (@{$object->{nodeid}->{$l}}) {
-
-                		$xml .= '<'.$l.' rdf:nodeID="'.$prop.'"/>'."\n";	
-			}
-		}
-		$xml .= '</'.$object->{Class}.">\n";
-
-	}
-	$xml .= "</rdf:RDF>\n";
-	return $xml;
-}
-
-
-
-=head1 NAME
-
-    RDF::Simple::Serialiser
-
-=head1 DESCRIPTION
-
-    a simple RDF serialiser. accepts an array of triples, returns a serialised RDF document.
-
-=head1 SYNOPSIS
-
-    my $ser = RDF::Simple::Serialiser->new;
-
-    my @triples = (
-                   ['http://example.com/url#', 'dc:creator', 'zool@example.com'],
-                   ['http://example.com/url#', 'foaf:Topic', '_id:1234'],
-                   ['_id:1234','http://www.w3.org/2003/01/geo/wgs84_pos#lat','51.334422']
-                   );
-
-    my $rdf = $ser->serialise(@triples);
-
-    ##
-    ## supply own bNode id prefix, add namespaces
-
-    my $ser = RDF::Simple::Serialiser->new( nodeid_prefix => 'a:' );
-
-    $ser->addns( foaf => 'http://xmlns.com/foaf/0.1/' );
-
-    my $node1 = $ser->genid;
-    my $node2 = $ser->genid;
-
-    my @triples = (
-                   [$node1, 'foaf:name', 'Jo Walsh'],
-                   [$node1, 'foaf:knows', $node2],
-                   [$node2, 'foaf:name', 'Robin Berjon'],
-                   [$node1, 'rdf:type', 'foaf:Person'],
-                   [$node2, 'rdf:type','http://xmlns.com/foaf/0.1/Person']
-                   );
-
-    my $rdf = $ser->serialise(@triples);
-
-    ##
-    ## round-trip
-
-    my $parser = RDF::Simple::Parser->new();
-    my $rdf = LWP::Simple::get('http://www.zooleika.org.uk/foaf.rdf');
-
-    my @triples = $parser->parse_rdf($rdf);
-    my $new_rdf = $serialiser->serialise(@triples);
-
-
-=head1 METHODS
-
-=head2 new( [ nodeid_prefix => 'prefix' ])
-
-=head2 serialise( @triples )
-
-
-    accepts a 'bucket of triples'
-    (an array of array references which are
-    'subject, predicate, object' statements)
-    and returns a serialised RDF document.
-
-    if 'rdf:type' is not provided for a subject,
-    the generic node type 'rdf:Description' is used.
-
-
-=head2 genid( )
-
-
-    generates a random identifier for use as a bNode
-    (anonymous node) nodeID.
-    if nodeid_prefix is set, the generated id uses the prefix,
-    followed by 8 random numbers.
-
-
-=head2 addns( qname => 'http://example.com/rdf/vocabulary#',
+=item addns( qname => 'http://example.com/rdf/vocabulary#',
               qname2 => 'http://yetanother.org/vocabulary/' )
 
 
-    add new namespaces to the RDF document.
-    a namespace must exist for each predicate used in a triple.
-    the RDF::Simple::NS module which supports this one
-    provides the following vocabularies by default
-    (you can override them if wished)
+add new namespaces to the RDF document.
+a namespace must exist for each predicate used in a triple.
+the RDF::Simple::NS module which supports this one
+provides the following vocabularies by default
+(you can override them if wished)
 
         foaf => 'http://xmlns.com/foaf/0.1/',
         dc => 'http://purl.org/dc/elements/1.1/',
@@ -372,6 +226,117 @@ sub render_rdfxml {
         wiki=>"http://purl.org/rss/1.0/modules/wiki/",
         chefmoz=>"http://chefmoz.org/rdf/elements/1.0/",
 
+=cut
+
+sub addns
+  {
+  my ($self, %p) = @_;
+  return $self->_ns->lookup(%p);
+  } # addns
+
+
+=item genid( )
+
+generates a random identifier for use as a bNode
+(anonymous node) nodeID.
+if nodeid_prefix is set, the generated id uses the prefix,
+followed by 8 random numbers.
+
+=cut
+
+sub genid
+  {
+  my $self = shift;
+  my $prefix = $self->nodeid_prefix || '_id:';
+  my @num = (0..9);
+  my $string = join '', (map { @num[rand @num] } 0..7);
+  return $prefix.$string;
+  } # genid
+
+sub _ns
+  {
+  my $self = shift;
+  return $self->{_rdfns} if $self->{_rdfns};
+  $self->{_rdfns} = RDF::Simple::NS->new;
+  } # _ns
+
+sub _used
+  {
+  my ($self, $uri) = @_;
+  if (defined $uri and ($uri !~ m/^http/)) {	
+    my $pref = $self->_ns->prefix($uri);
+    $self->{_used_entities}->{ $pref } = 1 if $pref;
+    }
+  return $self->{_used_entities};
+  } # _used
+
+
+=item render
+
+Does the heavy lifting of converting the "objects" to a string.
+Users of this module should call serialize();
+Subclassers of this module will probably rewrite render().
+
+=cut
+
+sub render
+  {
+  my ($self, $objects, $ns) = @_;
+  my $xml = "<rdf:RDF\n";
+ NS:
+  foreach my $n (keys %$ns)
+    {
+    $xml .= 'xmlns:'.$n.'="'.$ns->{$n}."\"\n";
+    } # foreach NS
+  $xml .= ">\n";
+ OBJECT:
+  foreach my $object (@$objects)
+    {
+    $xml .= '<'.$object->{Class};
+    if ($object->{Uri})
+      {
+      $xml .= ' rdf:about="'.$object->{Uri}.'"';
+      }	# if
+    else
+      {
+      $xml .= ' rdf:nodeID="'.$object->{NodeId}.'"';
+      }
+    $xml .= ">\n";
+ LITERAL:
+    foreach my $l (keys %{$object->{literal}})
+      {
+ LITERAL_PROP:
+      foreach my $prop (@{$object->{literal}->{$l}})
+        {
+        $xml .= qq{<$l>$prop</$l>\n};
+        } # foreach LITERAL_PROP
+      } # foreach LITERAL
+ RESOURCE:
+    foreach my $l (keys %{$object->{resource}})
+      {
+ RESOURCE_PROP:
+      foreach my $prop (@{$object->{resource}->{$l}})
+        {
+        $xml .= qq{<$l rdf:resource="$prop"/>\n};
+        } # foreach RESOURCE_PROP
+      } # foreach RESOURCE
+ NODEID:
+    foreach my $l (keys %{$object->{nodeid}})
+      {
+ NODEID_PROP:
+      foreach my $prop (@{$object->{nodeid}->{$l}})
+        {
+        $xml .= qq{<$l rdf:nodeID="$prop"/>\n};
+        } # foreach NODEID_PROP
+      } # foreach NODEID
+    $xml .= '</'. $object->{Class} .">\n";
+    } # foreach OBJECT
+  $xml .= "</rdf:RDF>\n";
+  return $xml;
+  } # render
+
+
+=back
 
 =head1 BUGS
 
@@ -379,20 +344,31 @@ Please report bugs via the RT web site L<http://rt.cpan.org/Ticket/Create.html?Q
 
 =head1 NOTES
 
-    I am English, so this is a Serialiser. for our divided friends across the water, RDF::Simple::Serializer will work as an alias to the module, and serialize() does the same as serialise().
- 
-    Neither parser or serialiser makes an effort to differentiate formally between URIs and literals, as is more general RDF practise. This was a conscious effort to keep things simple, but i plan to add a make_life_complex option to both.
+The original author was British, so this is a Serialiser.
+For American programmers,
+RDF::Simple::Serializer will work as an alias to the module,
+and serialize() does the same as serialise().
+
+Neither parser or serialiser makes an effort to differentiate formally
+between URIs and literals, as is more general RDF practise.
+This was a conscious effort to keep things simple,
+but I plan to add a make_life_complex option to both.
 
 =head1 THANKS
 
-    Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches.
+Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches.
 
 =head1 AUTHOR
 
-    jo walsh <jo@london.pm.org>
+Jo Walsh <jo@london.pm.org>
+Currently maintained by Martin Thurn <mthurn@cpan.org>
 
 =head1 LICENSE
 
-    this module is available under the same terms as perl itself.
+This module is available under the same terms as perl itself.
 
 =cut
+
+1;
+
+__END__

@@ -1,3 +1,9 @@
+2008-12-06  Kingpin  <Martin@BLUEMAX>
+
+	* simplified the tests
+
+	* massive code clean ups (now uses Class::MethodMaker)
+
 2008-10-05  Kingpin  <Martin@BLUEMAX>
 
 	* lib/RDF/Simple/Serialiser.pm (make_object): fixed for RT ticket 29067

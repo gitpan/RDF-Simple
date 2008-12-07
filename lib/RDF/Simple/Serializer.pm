@@ -1,14 +1,12 @@
 
-# $Id: Serializer.pm,v 1.1 2008/10/05 18:58:02 Martin Exp $
+# $Id: Serializer.pm,v 1.2 2008/12/07 03:28:45 Martin Exp $
 
 package RDF::Simple::Serializer;
 
 use strict;
 use warnings;
 
-use base qw(RDF::Simple::Serialiser);
-
-1;
+use base q(RDF::Simple::Serialiser);
 
 =head1 NAME
 
@@ -23,3 +21,7 @@ Same as RDF::Simple::Serialiser
 See RDF::Simple::Serialiser
 
 =cut
+
+1;
+
+__END__
