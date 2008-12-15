@@ -1,13 +1,12 @@
 
-# $Id: Makefile.PL,v 1.15 2008/12/11 11:29:39 Martin Exp $
+# $Id: Makefile.PL,v 1.16 2008/12/15 22:50:22 Martin Exp $
 
 use inc::Module::Install;
 
 all_from('lib/RDF/Simple.pm');
 author('Martin Thurn mthurn@cpan.org');
-version(0.403);
+version(0.404);
 perl_version(5.005);
-license('perl');
 
 requires('Class::MakeMethods');
 test_requires('IO::CaptureOutput');
@@ -18,6 +17,6 @@ recommends('XML::SAX::Expat');  # Need this for Solaris and Linux?
 test_requires('Test::File');
 test_requires('Test::Simple');
 
-WriteAll();
+WriteAll;
 
 __END__

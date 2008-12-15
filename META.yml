@@ -1,12 +1,31 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         RDF-Simple
-version:      0.3
-version_from: lib/RDF/Simple.pm
-installdirs:  site
-requires:
-    Test::Simple:                  0.44
-    XML::SAX:                      0.12
-
+---
+abstract: 'read and write RDF without complication'
+author:
+  - 'Martin Thurn mthurn@cpan.org'
+build_requires:
+  IO::CaptureOutput: 0
+  Test::File: 0
+  Test::Simple: 0
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+generated_by: 'Module::Install version 0.77'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+module_name: RDF::Simple
+name: RDF-Simple
+no_index:
+  directory:
+    - inc
+    - t
+recommends:
+  XML::SAX::Expat: 0
+requires:
+  Class::MakeMethods: 0
+  LWP::UserAgent: 0
+  Regexp::Common: 0
+  XML::SAX: 0
+  perl: 5.005
+resources:
+  license: http://dev.perl.org/licenses/
+version: 0.404
