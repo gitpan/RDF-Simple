@@ -1,38 +1,22 @@
-NAME RDF::Simple
-DESCRIPTION
-        This package is for very simple manipulations
-        of RDF/XML serialisations of RDF graphs. 
-        It consists of:
+README for RDF::Simple distribution
 
-        RDF::Simple::Parser
-        RDF::Simple::Serialiser
+This package is for very simple manipulations of RDF/XML.
+
+It consists of:
+
+RDF::Simple::Parser
+RDF::Simple::Serialiser
     
-        Please consult the individual pod for these packages.
-        The parser requires XML::SAX,
-        The serialiser requires Template Toolkit (Template)
+The parser requires XML::SAX,
 
-        Also provided is RDF::Simple::NS,
-        a utility class for XML namespaces in RDF
+The aim here is to keep things Simple.
+The parser does not differentiate between literal and resource values in the model.
+All you get back is a bucket-o-triples (array of arrays).
+The serialiser does its best to do DWYM.
 
-        The aim here is to keep things Simple: 
-        e.g., the parser doesn't differentiate between
-        literal and resource values in the model
-        All you get back is a bucket-o-triples
-        (array of arrays)
-        The serialiser does its best to do DWYM.
+If you get error messages like "Unable to provide required features",
+that means XML::SAX is not installed properly.
+Use CPAN or CPANPLUS to install XML::SAX,
+or on a Unix system you can try to do something like this (adjust for your perl version / location):
 
-        If you want a more complex and involved RDF API,
-        I'd suggest looking at RDF::Core
-        or at the redland RDF application toolkit
-        at http://www.redland.opensource.ac.uk
-    
-        This is a beta release, and may well contain bugs.
-        Please report them!
-    
-AUTHOR
-        Jo Walsh <jo@london.pm.org>
-
-LICENSE
-        This package and its contents are available 
-        under the same terms as perl itself
-
+ln -s /usr/lib/perl/XML/SAX/ParserDetails.ini /usr/local/lib/perl/site/5.10.0/XML/SAX/ParserDetails.ini

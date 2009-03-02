@@ -1,9 +1,8 @@
 
-# $Id: Parser.pm,v 1.6 2008/12/07 03:37:28 Martin Exp $
-
-package RDF::Simple::Parser;
+# $Id: Parser.pm,v 1.8 2009/03/02 15:48:37 Martin Exp $
 
 use strict;
+use warnings;
 
 =head1 NAME
 
@@ -29,13 +28,17 @@ returns a 'bucket-o-triples' (array of arrays)
 
 =cut
 
+package RDF::Simple::Parser;
+
+use constant DEBUG => 0;
+
 use LWP::UserAgent;
 use RDF::Simple::Parser::Handler;
 use RDF::Simple::Parser::Sink;
 use XML::SAX qw(Namespaces Validation);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.6 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.8 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (
@@ -65,12 +68,16 @@ Returns an array of array references which are RDF triples.
 
 sub parse_rdf
   {
-  my ($self,$rdf) = @_;
-  my $sink = RDF::Simple::Parser::Sink->new;
-  my $factory = XML::SAX::ParserFactory->new();
+  my ($self, $rdf) = @_;
+  DEBUG && print STDERR " DDD Parser::parse_rdf()\n";
+  my $sink = new RDF::Simple::Parser::Sink;
+  my $handler = new RDF::Simple::Parser::Handler($sink,
+                                                 qnames => 1,
+                                                 base => $self->base,
+                                                );
+  my $factory = new XML::SAX::ParserFactory;
   $factory->require_feature(Namespaces);
-  my $handler = RDF::Simple::Parser::Handler->new($sink, qnames => 1, base => $self->base );
-  my $parser = $factory->parser(Handler=>$handler);
+  my $parser = $factory->parser(Handler => $handler);
   $parser->parse_string($rdf);
   return @{ $handler->result };
   } # parse_rdf

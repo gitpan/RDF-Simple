@@ -1,14 +1,18 @@
 
-# $Id: Handler.pm,v 1.3 2008/12/07 03:36:56 Martin Exp $
+# $Id: Handler.pm,v 1.6 2009/03/02 15:47:32 Martin Exp $
 
 package RDF::Simple::Parser::Handler;
 
 use strict;
+use warnings;
+
+use Carp;
+use Data::Dumper;  # for debugging only
 use RDF::Simple::NS;
 use RDF::Simple::Parser::Attribs;
 use RDF::Simple::Parser::Element;
-use Carp;
-use Data::Dumper;
+
+use constant DEBUG => 0;
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (
@@ -19,18 +23,19 @@ sub addns
   {
   my ($self,$prefix,$uri) = @_;
   $self->ns->lookup($prefix,$uri);
-  }
+  } # addns
 
 sub ns
   {
   my $self = shift;
   return $self->{_ns} if $self->{_ns};
   $self->{_ns} = RDF::Simple::NS->new;
-  }
+  } # ns
 
 
 sub new
   {
+  DEBUG && print STDERR " FFF Handler::new(@_)\n";
   my ($class,$sink, %p) = @_;
   my $self = bless {}, ref $class || $class;
   $self->base($p{'base'});
@@ -38,239 +43,291 @@ sub new
   $self->genID(1);
   $self->stack([]);
   my @dis;
-  foreach (('RDF','ID','about','bagID','parseType','resource','nodeID','datatype','li','aboutEach','aboutEachPrefix')) {
-    push @dis, $self->ns->uri('rdf').$_;
-    }
+  foreach my $s (qw( RDF ID about bagID parseType resource nodeID datatype li aboutEach aboutEachPrefix ))
+    {
+    push @dis, $self->ns->uri('rdf').$s;
+    } # foreach
   $self->disallowed(\@dis);
   return $self;
   } # new
 
-sub _triple {
-    my ($self,$s,$p,$o) = @_;
-    my $r = $self->result;
-    push @$r, [$s,$p,$o];
-#    $r .= join(' ',($s,$p,$o))."\n";
-    $self->result($r);
-}
+sub _triple
+  {
+  my $self = shift;
+  if (DEBUG)
+    {
+    print STDERR " FFF $self ->_triple\n";
+    # print STDERR Dumper(\@_);
+    my ($package, $file, $line, $sub) = caller(1);
+    print STDERR " DDD   called from $sub line $line\n";
+    } # if
+  my ($s, $p, $o) = @_;
+  my $r = $self->result;
+  push @$r, [$s,$p,$o];
+  $self->result($r);
+  } # _triple
 
-sub start_element {
-    my ($self,$sax) = @_;
-    my $e;
-    my ($name,$ns,$qname,$prefix) = ($sax->{LocalName},$sax->{NamespaceURI},$sax->{Name},$sax->{Prefix});
-    my $stack = $self->stack;
-    if (scalar(@$stack) > 0) {
-        $e = RDF::Simple::Parser::Element->new($ns,$prefix,$name,$stack->[-1], RDF::Simple::Parser::Attribs->new($sax->{Attributes},$self->qnames),qnames => $self->qnames,base=> $self->base);
+sub start_element
+  {
+  my ($self, $sax) = @_;
+  my $e;
+  my $stack = $self->stack;
+  my $parent;
+  if (scalar(@$stack) > 0)
+    {
+    $parent = $stack->[-1];
     }
-    else {
+  my $attrs = RDF::Simple::Parser::Attribs->new($sax->{Attributes},
+                                                $self->qnames);
+  $e = RDF::Simple::Parser::Element->new(
+                                         $sax->{NamespaceURI},
+                                         $sax->{Prefix},
+                                         $sax->{LocalName},
+                                         $parent,
+                                         $attrs,
+                                         qnames => $self->qnames,
+                                         base => $self->base,
+                                        );
+  push @{$e->xtext}, $e->qname.$e->attrs;
+  push @{$stack}, $e;
+  $self->stack($stack);
+  } # start_element
 
-        $e = RDF::Simple::Parser::Element->new($ns,$prefix,$name,undef, RDF::Simple::Parser::Attribs->new($sax->{Attributes},$self->qnames),qnames => $self->qnames,base=>$self->base);
-    }
+sub characters
+  {
+  my ($self, $chars) = @_;
+  my $stack = $self->{stack} || [];
+  $stack->[-1]->{text} .= $chars->{Data};
+  $stack->[-1]->{xtext}->[-1] .= $chars->{Data};
+  $self->stack($stack);
+  } # characters
 
-    push @{$e->xtext}, $e->qname.$e->attrs;
-    push @{$stack}, $e;
+sub end_element
+  {
+  my ($self, $sax) = @_;
+  DEBUG && print STDERR " FFF end_element()\n";
+  my $name = $sax->{LocalName};
+  my $qname = $sax->{Name};
+  my $stack = $self->stack;
+  my $element = pop @{$stack};
+  # DEBUG && print STDERR " DDD   element is ", Dumper($element);
+  $element->{xtext}->[2] .= '</'.$element->{qname}.'>';
+  if (scalar(@$stack) > 0)
+    {
+    my $kids = $stack->[-1]->children || [];
+    push @$kids, $element;
+    $stack->[-1]->children($kids);
+    @{ $element->{xtext} } = grep { defined($_) } @{ $element->{xtext} };
+    $stack->[-1]->{xtext}->[1] = join('', @{$element->{xtext}});
     $self->stack($stack);
-}
-
-sub characters {
-    my ($self,$chars) = @_;
-    my $stack = $self->{stack} || [];
-    $stack->[-1]->{text} = $chars->{Data};
-    $stack->[-1]->{xtext}->[-1] = $chars->{Data};
-    $self->stack($stack);
-}
-
-sub end_element {
-    my ($self,$sax) = @_;
-    my $name = $sax->{LocalName};
-    my $qname = $sax->{Name};
-    my $stack = $self->stack;
-    my $element = pop @{$stack};
-    $element->{xtext}->[2] .= '</'.$element->{qname}.'>';
-    if (scalar(@$stack) > 0) {
-        my $kids = $stack->[-1]->children || [];
-        push @$kids, $element;
-        $stack->[-1]->children($kids);
-        @{ $element->{xtext} } = grep { defined($_) } @{ $element->{xtext} };
-        $stack->[-1]->{xtext}->[1] = join('',@{$element->{xtext}});
-        $self->stack($stack);
     }
-    else {
-        $self->document($element);
+  else
+    {
+    $self->document($element);
     }
-}
+  } # end_element
 
-sub uri {
-    my ($self,$uri) = @_;
-    # losing the angle brackets for sake of Simplicity
-    return "$uri";
-}
+sub uri
+  {
+  my ($self,$uri) = @_;
+  # losing the angle brackets for sake of Simplicity
+  return "$uri";
+  } # uri
 
-sub bNode {
-    my ($self, $id, %p) = @_;
+sub bNode
+  {
+  my ($self, $id, %p) = @_;
+  my $n_id = sprintf("_:id%08x%04x", time, int rand 0xFFFF);
+  $n_id = $self->bnode_absolute_prefix.$n_id if $self->bnode_absolute_prefix;
+  return $n_id;
+  } # bNode
 
-#    if (my $l = $p{label}) {
-#        if ($l->[0] !~ m/^\w+$/) {
-#            $l = 'b'.$l;
-#            # very unsure
-#            $l =~ s/^i([rd]+)/ir$1/;
-#            return $l;
-#        }
-#    }
-    my $n_id = sprintf("_:id%08x%04x", time, int rand 0xFFFF);
-    $n_id = $self->bnode_absolute_prefix.$n_id if $self->bnode_absolute_prefix;
-    return $n_id;
-}
+sub literal
+  {
+  my ($self, $string, $attrs) = @_;
+  DEBUG && print STDERR " FFF literal()\n";
+  if ($attrs->{lang} and $attrs->{dtype})
+    {
+    die "can't have both lang and dtype";
+    } # if
+  return $string;
+  #r_quot = re.compile(r'([^\\])"')
+  
+  #      return ''.join(('"%s"' %
+  # r_quot.sub('\g<1>\\"',
+  #`unicode(s)`[2:-1]),
+  #          lang and ("@" + lang) or '',
+  # dtype and ("^^<%s>" % dtype) or ''))
+  
+  } # literal
 
-sub literal {
-    my ($self,$string,$attrs) = @_;
-    if ($attrs->{lang} and $attrs->{dtype}) {
-        die "can't have both lang and dtype";
+sub document
+  {
+  my ($self, $doc) = @_;
+  warn("couldn't find rdf:RDF element") unless $doc->URI eq $self->ns->uri('rdf').'RDF';
+  my @children = @{$doc->children} if $doc->children;
+  unless (scalar(@children) > 0)
+    {
+    warn("no rdf triples found in document!");
+    return;
     }
-    return $string;
-#r_quot = re.compile(r'([^\\])"')
+  foreach my $e (@children)
+    {
+    # DEBUG && print STDERR Dumper($e);
+    $self->nodeElement($e);
+    } # foreach
+  } # document
 
-#      return ''.join(('"%s"' %
-# r_quot.sub('\g<1>\\"',
-#`unicode(s)`[2:-1]),
-#          lang and ("@" + lang) or '',
-# dtype and ("^^<%s>" % dtype) or ''))
 
-}
-
-sub document {
-    my ($self,$doc) = @_;
-    warn("couldn't find rdf:RDF element") unless $doc->URI eq $self->ns->uri('rdf').'RDF';
-    my @children = @{$doc->children} if $doc->children;
-    unless (scalar(@children) > 0) {
-        warn("no rdf triples found in document!");
-        return;
+sub nodeElement
+  {
+  my ($self,$e) = @_;
+  my $dissed =  $self->disallowed;
+  my $dis = grep {$_ eq $e->URI} @$dissed;
+  warn("disallowed element used as node") if $dis;
+  my $rdf = $self->ns->uri('rdf');
+  my $base = $e->base || $self->base;
+  if ($e->attrs->{$rdf.'ID'})
+    {
+    $e->subject( $self->uri( join('',($base,'#',$e->attrs->{$rdf.'ID'})) ));
     }
-    foreach my $e (@children) {
-        $self->nodeElement($e);
+  elsif ($e->attrs->{$rdf.'about'})
+    {
+    $e->subject( $self->uri( $e->attrs->{$rdf.'about'} ));
     }
-}
+  elsif ($e->attrs->{$rdf.'nodeID'})
+    {
+    $e->subject( $self->bNode($e->attrs->{$rdf.'nodeID'}) );
+    }
+  elsif (not $e->subject)
+    {
+    $e->subject($self->bNode);
+    }
+  if ($e->URI ne $rdf.'Description')
+    {
+    $self->_triple($e->subject,$rdf.'type',$self->uri($e->URI));
+    }
+  if ($e->attrs->{$rdf.'type'})
+    {
+    $self->_triple($e->subject,$rdf.'type',$self->ns->uri($e->{$rdf.'type'}));
+    }
+  foreach my $k (keys %{$e->attrs})
+    {
+    my $dis = $self->disallowed;
+    push @$dis, $rdf.'type';
+    my ($in) = grep {/$k/} @$dis;
+    if (not $in)
+      {
+      my $objt = $self->literal($e->attrs->{$k},$e->language);
+      DEBUG && print STDERR " DDD nodeElement _triple(,,$objt)\n";
+      $self->_triple($e->subject,$self->uri($k),$objt);
+      } # if
+    } # foreach
+  my $children = $e->children;
+  foreach my $child (@$children)
+    {
+    $self->propertyElt($child);
+    } # foreach
+  } # nodeElement
 
 
-sub nodeElement {
-    my ($self,$e) = @_;
-    my $dissed =  $self->disallowed;
-    my $dis = grep {$_ eq $e->URI} @$dissed;
-    warn("disallowed element used as node") if $dis;
-    my $rdf = $self->ns->uri('rdf');
+sub propertyElt
+  {
+  my $self = shift;
+  my $e = shift;
+  DEBUG && print STDERR " FFF propertyElt($e)\n";
+  # DEBUG && print STDERR Dumper($e);
+  my $rdf = $self->ns->uri('rdf');
+  if ($e->URI eq $rdf.'li')
+    {
+    $e->parent->{liCounter} ||= 1;
+    $e->URI($rdf.$e->parent->{liCounter});
+    $e->parent->{liCounter}++;
+    }
+  my $children = $e->children || [];
+  if ((scalar(@$children) eq 1) and (not $e->attrs->{$rdf.'parseType'}))
+    {
+    $self->resourcePropertyElt($e);
+    }
+  elsif ((scalar(@$children) eq 0) and $e->text)
+    {
+    $self->literalPropertyElt($e);
+    }
+  elsif (my $ptype = $e->attrs->{$rdf.'parseType'})
+    {
+    if ($ptype eq 'Resource')
+      {
+      $self->parseTypeResourcePropertyElt($e);
+      }
+    elsif ($ptype eq 'Collection')
+      {
+      $self->parseTypeCollectionPropertyElt($e);
+      }
+    else
+      {
+      $self->parseTypeLiteralPropertyElt($e);
+      }
+    } # if has a parseType
+  elsif (not $e->text)
+    {
+    $self->emptyPropertyElt($e);
+    }
+  } # propertyElt
 
+sub resourcePropertyElt
+  {
+  my ($self,$e) = @_;
+  DEBUG && print STDERR " FFF resourcePropertyElt($e)\n";
+  my $rdf = $self->ns->uri('rdf');
+  my $n = $e->children->[0];
+  $self->nodeElement($n);
+  if ($e->parent)
+    {
+    $self->_triple($e->parent->subject,$self->uri($e->URI),$n->subject);
+    }
+  if ($e->attrs->{$rdf.'ID'})
+    {
     my $base = $e->base || $self->base;
-    if ($e->attrs->{$rdf.'ID'}) {
-        $e->subject( $self->uri( join('',($base,'#',$e->attrs->{$rdf.'ID'})) ));
+    my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
+    $self->reify($i,$e->parent->subject,$self->uri($e->URI),$n->subject);
     }
-    elsif ($e->attrs->{$rdf.'about'}) {
-        $e->subject( $self->uri( $e->attrs->{$rdf.'about'} ));
-    }
-    elsif ($e->attrs->{$rdf.'nodeID'}) {
-        $e->subject( $self->bNode($e->attrs->{$rdf.'nodeID'}) );
-    }
-    elsif (not $e->subject) {
-        $e->subject($self->bNode);
-    }
+  } # resourcePropertyElt
 
-    if ($e->URI ne $rdf.'Description') {
-        $self->_triple($e->subject,$rdf.'type',$self->uri($e->URI));
-    }
-    if ($e->attrs->{$rdf.'type'}) {
-        $self->_triple($e->subject,$rdf.'type',$self->ns->uri($e->{$rdf.'type'}));
-    }
-    foreach my $k (keys %{$e->attrs}) {
-        my $dis = $self->disallowed;
-        push @$dis, $rdf.'type';
 
-        my ($in) = grep {/$k/} @$dis;
-        if (not $in) {
-            my $objt = $self->literal($e->attrs->{$k},$e->language);
-            $self->_triple($e->subject,$self->uri($k),$objt);
-        }
-    }
-    my $children = $e->children;
+sub reify
+  {
+  my ($self,$r,$s,$p,$o) = @_;
+  my $rdf = $self->ns->uri('rdf');
+a  $self->_triple($r, $self->uri($rdf.'subject'), $s);
+  $self->_triple($r, $self->uri($rdf.'predicate'), $p);
+  $self->_triple($r, $self->uri($rdf.'object'), $o);
+  $self->_triple($r, $self->uri($rdf.'type'), $self->uri($rdf.'Statement'));
+  } # reify
 
-    foreach (@$children) {
-        $self->propertyElt($_);
-    }
-}
 
-sub propertyElt {
-    my ($self,$e) = @_;
-
-    my $rdf = $self->ns->uri('rdf');
-    if ($e->URI eq $rdf.'li') {
-        $e->parent->{liCounter} ||= 1;
-        $e->URI($rdf.$e->parent->{liCounter});
-        $e->parent->{liCounter}++;
-    }
-    my $children = $e->children || [];
-
-    if ((scalar(@$children) eq 1) and (not $e->attrs->{$rdf.'parseType'})) {
-        $self->resourcePropertyElt($e);
-    }
-    elsif ((scalar(@$children) eq 0) and $e->text) {
-        $self->literalPropertyElt($e);
-    }
-    elsif (my $ptype = $e->attrs->{$rdf.'parseType'}) {
-        if ($ptype eq 'Resource') {
-            $self->parseTypeResourcePropertyElt($e);
-        }
-        elsif ($ptype eq 'Collection') {
-            $self->parseTypeCollectionPropertyElt($e);
-        }
-        else {
-            $self->parseTypeLiteralPropertyElt($e);
-        }
-    }
-    elsif (not $e->text) {
-        $self->emptyPropertyElt($e);
-    }
-
-}
-
-sub resourcePropertyElt {
-    my ($self,$e) = @_;
-
-    my $rdf = $self->ns->uri('rdf');
-    my $n = $e->children->[0];
-    $self->nodeElement($n);
-    if ($e->parent) {
-        $self->_triple($e->parent->subject,$self->uri($e->URI),$n->subject);
-    }
-    if ($e->attrs->{$rdf.'ID'}) {
-        my $base = $e->base || $self->base;
-        my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
-        $self->reify($i,$e->parent->subject,$self->uri($e->URI),$n->subject);
-    }
-}
-
-sub reify {
-    my ($self,$r,$s,$p,$o) = @_;
-    my $rdf = $self->ns->uri('rdf');
-    $self->_triple($r,$self->uri($rdf.'subject'),$s);
-    $self->_triple($r,$self->uri($rdf.'predicate'),$p);
-    $self->_triple($r,$self->uri($rdf.'object'),$o);
-    $self->_triple($r,$self->uri($rdf.'type'),$self->uri($rdf.'Statement'));
-}
-
-sub literalPropertyElt {
-    my ($self,$e) = @_;
-    my $base = $e->base || $self->base;
-    my $rdf = $self->ns->uri('rdf');
-    my $o = $self->literal($e->text,$e->language,$e->attrs->{$rdf.'datatype'});
-    $self->_triple($e->parent->subject,$self->uri($e->URI),$o);
-    if ($e->attrs->{$rdf.'ID'}) {
-        my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
-        $self->reify($i,$e->parent->subject, $self->uri($e->URI),$o);
-    }
-}
+sub literalPropertyElt
+  {
+  my ($self, $e) = @_;
+  DEBUG && print STDERR " FFF literalPropertyElt($e)\n";
+  my $base = $e->base || $self->base;
+  my $rdf = $self->ns->uri('rdf');
+  my $o = $self->literal($e->text, $e->language, $e->attrs->{$rdf.'datatype'});
+  DEBUG && print STDERR " DDD literalPropertyElt _triple(,,$o)\n";
+  $self->_triple($e->parent->subject,$self->uri($e->URI),$o);
+  if ($e->attrs->{$rdf.'ID'})
+    {
+    my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
+    $self->reify($i,$e->parent->subject, $self->uri($e->URI),$o);
+    } # if
+  } # literalPropertyElt
 
 sub parseTypeLiteralOrOtherPropertyElt {
     my ($self,$e) = @_;
+    DEBUG && print STDERR " FFF parseTypeLiteralOrOtherPropertyElt($e)\n";
     my $base = $e->base || $self->base;
     my $rdf = $self->ns->uri('rdf');
     my $o = $self->literal($e->xtext->[1],$e->language,$rdf.'XMLLiteral');
+    DEBUG && print STDERR " DDD parseTypeLiteralOrOtherPropertyElt _triple(,,$o)\n";
     $self->_triple($e->parent->subject,$self->uri($e->URI),$o);
     if ($e->attrs->{$rdf.'ID'}) {
         my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
@@ -281,7 +338,9 @@ sub parseTypeLiteralOrOtherPropertyElt {
 
 sub parseTypeResourcePropertyElt {
     my ($self,$e) = @_;
+    DEBUG && print STDERR " FFF parseTypeResourcePropertyElt($e)\n";
     my $n = $self->bNode;
+    DEBUG && print STDERR " DDD parseTypeResourcePropertyElt _triple(,,$n)\n";
     $self->_triple($e->parent->subject,$self->uri($e->URI),$n);
 
     my $c = RDF::Simple::Parser::Element->new('http://www.w3.org/1999/02/22-rdf-syntax-ns#','rdf','Description',$e->parent,$e->attrs,qnames=>$self->qnames,base=>$e->base);
@@ -296,81 +355,110 @@ sub parseTypeResourcePropertyElt {
     $self->nodeElement($c);
 }
 
-sub parseTypeCollectionPropertyElt {
-    my ($self,$e) = @_;
-    my $rdf = $self->ns->uri('rdf');
-    my $children = $e->children;
-    my @s;
-    foreach (@$children) {
-        $self->nodeElement($_);
-        push @s, $self->bNode;
+sub parseTypeCollectionPropertyElt
+  {
+  my ($self,$e) = @_;
+  DEBUG && print STDERR " FFF parseTypeCollectionPropertyElt($e)\n";
+  my $rdf = $self->ns->uri('rdf');
+  my $children = $e->children;
+  my @s;
+  foreach (@$children)
+    {
+    $self->nodeElement($_);
+    push @s, $self->bNode;
     }
-    if (scalar(@s) eq 0) {
-        $self->_triple($e->parent->subject,$self->uri($e->URI),$self->uri($rdf.'nil'));
+  if (scalar(@s) eq 0)
+    {
+    $self->_triple($e->parent->subject,$self->uri($e->URI),$self->uri($rdf.'nil'));
     }
-    else {
-        $self->_triple($e->parent->subject,$self->uri($e->URI),$s[0]);
-        foreach my $n (@s) {
-            $self->_triple($n,$self->uri($rdf.'type'),$self->uri($rdf.'List'));
-        }
-        for (0 .. $#s) {
-            $self->_triple($s[$_],$self->uri($rdf.'first'),$e->children->[$_]->subject);
-        }
-        for (0 .. ($#s-1)) {
-            $self->_triple($s[$_],$self->uri($rdf.'rest'),$s[$_+1]);
-        }
-        $self->_triple($s[-1],$self->uri($rdf.'rest'),$self->uri($rdf.'nil'));
+  else
+    {
+    $self->_triple($e->parent->subject,$self->uri($e->URI),$s[0]);
+    foreach my $n (@s)
+      {
+      $self->_triple($n,$self->uri($rdf.'type'),$self->uri($rdf.'List'));
+      }
+    for (0 .. $#s)
+      {
+      $self->_triple($s[$_],$self->uri($rdf.'first'),$e->children->[$_]->subject);
+      }
+    for (0 .. ($#s-1))
+      {
+      $self->_triple($s[$_],$self->uri($rdf.'rest'),$s[$_+1]);
+      }
+    $self->_triple($s[-1],$self->uri($rdf.'rest'),$self->uri($rdf.'nil'));
     }
+  } # parseTypeCollectionPropertyElt
 
-}
 
-sub emptyPropertyElt {
-    my ($self,$e) = @_;
-    my $rdf = $self->ns->uri('rdf');
-    my $base = $e->base or $self->base;
-    $base ||= '';
-    my @keys = keys %{$e->attrs};
-    my $ids = $rdf.'ID';
-    my ($id) = grep {/$ids/} @keys;
-    my $r;
-    if ($id) {
-        $r = $self->literal($e->text,$e->language); # was o
-        $self->_triple($e->parent->subject,$self->uri($e->URI),$r);
+sub emptyPropertyElt
+  {
+  my $self = shift;
+  my $e = shift;
+  DEBUG && print STDERR " FFF emptyPropertyElt($e)\n";
+  # DEBUG && print STDERR Dumper($e);
+  my $rdf = $self->ns->uri('rdf');
+  my $base = $e->base or $self->base;
+  $base ||= '';
+  my @keys = keys %{$e->attrs};
+  my $ids = $rdf.'ID';
+  my ($id) = grep {/$ids/} @keys;
+  my $r;
+  if ($id)
+    {
+    $r = $self->literal($e->text, $e->language); # was o
+    DEBUG && print STDERR " DDD emptyPropertyElt _triple(,,$r)\n";
+    $self->_triple($e->parent->subject, $self->uri($e->URI), $r);
     }
-    else {
-        if ($e->attrs->{$rdf.'resource'}) {
-            my $res = $e->attrs->{$rdf.'resource'};
-	    $res ||= '';
-            $res = $base.$res if $res !~ m/\:\/\//;
-            $r = $self->uri($res);
+  else
+    {
+    if ($e->attrs->{$rdf.'resource'})
+      {
+      my $res = $e->attrs->{$rdf.'resource'};
+      $res ||= '';
+      $res = $base.$res if $res !~ m/\:\/\//;
+      $r = $self->uri($res);
+      }
+    elsif ($e->attrs->{$rdf.'nodeID'})
+      {
+      $r = $self->bNode($e->attrs->{$rdf.'nodeID'});
+      }
+    else
+      {
+      DEBUG && print STDERR " DDD   element has no 'resource' attr and no 'nodeID' attr.\n";
+      # Generate a new node ID, in case this empty element has attributes:
+      $r = $self->bNode;
+      }
+    my $dis = $self->disallowed;
+    my @a = map { grep {!/$_/} @$dis } keys %{$e->attrs};
+    if (scalar(@a) < 1)
+      {
+      # This empty element has no attributes, nothing to declare.
+      # Just add empty string to the triple:
+      $r = q{};
+      } # if
+    foreach my $a (@a)
+      {
+      if ($a ne $rdf.'type')
+        {
+        my $o = $self->literal($e->attrs->{$a}, $e->language);
+        DEBUG && print STDERR " DDD emptyPropertyElt _triple(,,$o)\n";
+        $self->_triple($r, $self->uri($a), $o);
+        } # if
+      else
+        {
+        $self->_triple($r, $self->uri($rdf.'type'), $self->uri($e->attrs->{$a}));
         }
-        elsif ($e->attrs->{$rdf.'nodeID'}) {
-            $r = $self->bNode($e->attrs->{$rdf.'nodeID'});
-        }
-        else {
-            $r = $self->bNode;
-        }
-
-        my $dis = $self->disallowed;
-        my @a = map { grep {!/$_/} @$dis } keys %{$e->attrs};
-
-        foreach my $a (@a) {
-            if ($a ne $rdf.'type') {
-                my $o = $self->literal($e->attrs->{$a},$e->language);
-                $self->_triple($r,$self->uri($a),$o);
-            }
-            else {
-                $self->_triple($r,$self->uri($rdf.'type'),$self->uri($e->attrs->{$a}));
-            }
-        }
-        $self->_triple($e->parent->subject,$self->uri($e->URI),$r);
+      } # foreach
+    $self->_triple($e->parent->subject, $self->uri($e->URI), $r);
+    } # else ! $id
+  if ($e->attrs->{$rdf.'ID'})
+    {
+    my $i = $self->uri(join($base, '#'.$e->attrs->{$rdf.'ID'}));
+    $self->reify($i, $e->parent->subject, $self->uri($e->URI,$r));
     }
-    if ($e->attrs->{$rdf.'ID'}) {
-        my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
-        $self->reify($i,$e->parent->subject,$self->uri($e->URI,$r));
-    }
+  } # emptyPropertyElt
 
-}
 
 =head1 NOTES
 

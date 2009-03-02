@@ -22,7 +22,9 @@ MANIFEST			This list of files
 META.yml
 README
 t/001_load.t
+t/empty.t
 t/from_file.t
+t/long.t
 t/pod.t
 t/simple.rdf
 t/uri_file.rdf
