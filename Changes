@@ -1,10 +1,14 @@
+2009-03-26  Kingpin  <Martin@BLUEMAX>
+
+	* lib/RDF/Simple/Serialiser.pm (_make_object): if object is scalar ref, output as literal (even if it looks like a URI)
+
 2009-03-02  Kingpin  <Martin@BLUEMAX>
 
 	* lib/RDF/Simple/Parser/Handler.pm (characters): FIXED to allow data to be parsed in multiple chunks
 
 2009-03-01  Kingpin  <Martin@BLUEMAX>
 
-	* lib/RDF/Simple/Parser/Handler.pm (emptyPropertyElt): FIXED for RT#43688: do not creat bNode for empty-string property value
+	* lib/RDF/Simple/Parser/Handler.pm (emptyPropertyElt): FIXED for RT#43688: do not create bNode for empty-string property value
 
 2008-12-06  Kingpin  <Martin@BLUEMAX>
 

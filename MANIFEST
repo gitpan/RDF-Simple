@@ -27,5 +27,6 @@ t/from_file.t
 t/long.t
 t/pod.t
 t/simple.rdf
+t/uri.t
 t/uri_file.rdf
 Todo

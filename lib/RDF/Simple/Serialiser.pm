@@ -1,5 +1,5 @@
 
-# $Id: Serialiser.pm,v 1.7 2008/12/07 03:37:11 Martin Exp $
+# $Id: Serialiser.pm,v 1.9 2009/03/26 19:42:02 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
@@ -7,7 +7,7 @@ use strict;
 
 =head1 NAME
 
-RDF::Simple::Serialiser - convert array of tripes to RDF string
+RDF::Simple::Serialiser - convert a list of triples to RDF
 
 =head1 DESCRIPTION
 
@@ -16,33 +16,34 @@ Accepts an array of triples, returns a serialised RDF document.
 
 =head1 SYNOPSIS
 
-    my $ser = RDF::Simple::Serialiser->new;
-    my @triples = (
-                   ['http://example.com/url#', 'dc:creator', 'zool@example.com'],
-                   ['http://example.com/url#', 'foaf:Topic', '_id:1234'],
-                   ['_id:1234','http://www.w3.org/2003/01/geo/wgs84_pos#lat','51.334422']
-                   );
-    my $rdf = $ser->serialise(@triples);
+  my $ser = RDF::Simple::Serialiser->new(
+    # OPTIONAL: Supply your own bNode id prefix:
+    nodeid_prefix => 'a:',
+    );
+  # OPTIONAL: Add your namespaces:
+  $ser->addns(
+              foaf => 'http://xmlns.com/foaf/0.1/',
+             );
+  my $node1 = $ser->genid;
+  my $node2 = $ser->genid;
+  my @triples = (
+                 ['http://example.com/url#', 'dc:creator', 'zool@example.com'],
+                 ['http://example.com/url#', 'foaf:Topic', '_id:1234'],
+                 ['_id:1234','http://www.w3.org/2003/01/geo/wgs84_pos#lat','51.334422']
+                 [$node1, 'foaf:name', 'Jo Walsh'],
+                 [$node1, 'foaf:knows', $node2],
+                 [$node2, 'foaf:name', 'Robin Berjon'],
+                 [$node1, 'rdf:type', 'foaf:Person'],
+                 [$node2, 'rdf:type','http://xmlns.com/foaf/0.1/Person']
+                 [$node2, 'foaf:url', \'http://server.com/NOT/an/rdf/uri.html'],
+                );
+  my $rdf = $ser->serialise(@triples);
 
-    ## Supply your own bNode id prefix, add namespaces:
-    my $ser = RDF::Simple::Serialiser->new( nodeid_prefix => 'a:' );
-    $ser->addns( foaf => 'http://xmlns.com/foaf/0.1/' );
-    my $node1 = $ser->genid;
-    my $node2 = $ser->genid;
-    my @triples = (
-                   [$node1, 'foaf:name', 'Jo Walsh'],
-                   [$node1, 'foaf:knows', $node2],
-                   [$node2, 'foaf:name', 'Robin Berjon'],
-                   [$node1, 'rdf:type', 'foaf:Person'],
-                   [$node2, 'rdf:type','http://xmlns.com/foaf/0.1/Person']
-                   );
-    my $rdf = $ser->serialise(@triples);
-
-    ## Round-trip example:
-    my $parser = RDF::Simple::Parser->new();
-    my $rdf = LWP::Simple::get('http://www.zooleika.org.uk/foaf.rdf');
-    my @triples = $parser->parse_rdf($rdf);
-    my $new_rdf = $serialiser->serialise(@triples);
+  ## Round-trip example:
+  my $parser = RDF::Simple::Parser->new();
+  my $rdf = LWP::Simple::get('http://www.zooleika.org.uk/foaf.rdf');
+  my @triples = $parser->parse_rdf($rdf);
+  my $new_rdf = $serialiser->serialise(@triples);
 
 
 =head1 METHODS
@@ -59,7 +60,7 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.7 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.9 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 =item new( [ nodeid_prefix => 'prefix' ])
 
@@ -68,7 +69,7 @@ $VERSION = do { my @r = (q$Revision: 1.7 $ =~ /\d+/g); sprintf "%d."."%03d" x $#
 =item serialise( @triples )
 
 Accepts a 'bucket of triples'
-(an array of array references which are 'subject, predicate, object' statements)
+(an array of array references which are [subject, predicate, object] statements)
 and returns a serialised RDF document.
 
 If 'rdf:type' is not provided for a subject,
@@ -165,10 +166,17 @@ sub _make_object
     $object->{NodeId} = $id;
     }
   my $pref = $self->nodeid_prefix || '_id:';
+ STATEMENT:
   foreach my $statement (@triples)
     {
     next if $statement->[1] eq 'rdf:type';
-    if ($statement->[2] =~ m/^$pref/)
+    if (ref $statement->[2])
+      {
+      # Special case: insert this value as a string, no matter what it
+      # looks like:
+      push @{ $object->{literal}->{$statement->[1]} }, ${$statement->[2]};
+      }
+    elsif ($statement->[2] =~ m/^$pref/)
       {
       $statement->[2] =~ s/\A[^a-zA-Z]/a/;
       $statement->[2] =~ s/\W//g;
@@ -184,10 +192,6 @@ sub _make_object
       }
     else
       {
-      # make safe for xml
-      my %escape = ('<'=>'&lt;', '>'=>'&gt;', '&'=>'&amp;', '"'=>'&quot;');
-      my $escape_re  = join '|' => keys %escape;
-      $statement->[2] =~ s/($escape_re)/$escape{$1}/g;    
       push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
       }
     } # foreach
@@ -199,32 +203,38 @@ sub _looks_like_uri
   {
   my $self = shift;
   my $s = shift || '';
-  return ($s =~ m/$RE{URI}/)
+  return (
+          ($s =~ m/$RE{URI}/)
+          &&
+          # The URI we're interested in are specifically those URI
+          # that can refer to an element of an ontology; these always
+          # look like namespace#name
+          ($s =~ m/.#./)
+         );
   } # _looks_like_uri
 
 
-=item addns( qname => 'http://example.com/rdf/vocabulary#',
-              qname2 => 'http://yetanother.org/vocabulary/' )
+=item addns( qname  => 'http://example.com/rdf/vocabulary#',
+             qname2 => 'http://yetanother.org/vocabulary/' )
 
 
-add new namespaces to the RDF document.
-a namespace must exist for each predicate used in a triple.
-the RDF::Simple::NS module which supports this one
+Use this method to add new namespaces to the RDF document.
+The RDF::Simple::NS module
 provides the following vocabularies by default
-(you can override them if wished)
+(you can override them if you wish):
 
-        foaf => 'http://xmlns.com/foaf/0.1/',
-        dc => 'http://purl.org/dc/elements/1.1/',
-        rdfs => "http://www.w3.org/2000/01/rdf-schema#",
-        daml => 'http://www.w3.org/2001/10/daml+oil#',
-        space => 'http://frot.org/space/0.1/',
-        geo => 'http://www.w3.org/2003/01/geo/wgs84_pos#',
-        rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        owl => 'http://www.w3.org/2002/07/owl#',
-        ical => 'http://www.w3.org/2002/12/cal/ical#',
-        dcterms=>"http://purl.org/dc/terms/",
-        wiki=>"http://purl.org/rss/1.0/modules/wiki/",
-        chefmoz=>"http://chefmoz.org/rdf/elements/1.0/",
+  foaf    => 'http://xmlns.com/foaf/0.1/',
+  dc      => 'http://purl.org/dc/elements/1.1/',
+  rdfs    => 'http://www.w3.org/2000/01/rdf-schema#',
+  daml    => 'http://www.w3.org/2001/10/daml+oil#',
+  space   => 'http://frot.org/space/0.1/',
+  geo     => 'http://www.w3.org/2003/01/geo/wgs84_pos#',
+  rdf     => 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+  owl     => 'http://www.w3.org/2002/07/owl#',
+  ical    => 'http://www.w3.org/2002/12/cal/ical#',
+  dcterms => 'http://purl.org/dc/terms/',
+  wiki    => 'http://purl.org/rss/1.0/modules/wiki/',
+  chefmoz => 'http://chefmoz.org/rdf/elements/1.0/',
 
 =cut
 
@@ -308,6 +318,7 @@ sub render
  LITERAL_PROP:
       foreach my $prop (@{$object->{literal}->{$l}})
         {
+        $prop = _xml_escape($prop);
         $xml .= qq{<$l>$prop</$l>\n};
         } # foreach LITERAL_PROP
       } # foreach LITERAL
@@ -336,6 +347,21 @@ sub render
   } # render
 
 
+sub _xml_escape
+  {
+  my $s = shift || '';
+  # Make safe for XML:
+  my %escape = (
+                q'<' => q'&lt;',
+                q'>' => q'&gt;',
+                q'&' => q'&amp;', # ', # Emacs bug
+                q'"' => q'&quot;',
+               );
+  my $escape_re  = join(q'|', keys %escape);
+  $s =~ s/($escape_re)/$escape{$1}/g;
+  return $s;
+  } # _xml_escape
+
 =back
 
 =head1 BUGS
@@ -349,10 +375,14 @@ For American programmers,
 RDF::Simple::Serializer will work as an alias to the module,
 and serialize() does the same as serialise().
 
-Neither parser or serialiser makes an effort to differentiate formally
-between URIs and literals, as is more general RDF practise.
-This was a conscious effort to keep things simple,
-but I plan to add a make_life_complex option to both.
+The distinction between a URI and a literal string
+in the "object" (third element) of each triple
+is made as follows:
+if the object is a reference, it is output as a literal;
+if the object "looks like" a URI
+(according to Regexp::Common::URI),
+it is output as a URI.
+
 
 =head1 THANKS
 
@@ -360,8 +390,8 @@ Thanks particularly to Tom Hukins, and also to Paul Mison, for providing patches
 
 =head1 AUTHOR
 
-Jo Walsh <jo@london.pm.org>
-Currently maintained by Martin Thurn <mthurn@cpan.org>
+Originally written by Jo Walsh (formerly <jo@london.pm.org>).
+Currently maintained by Martin Thurn <mthurn@cpan.org>.
 
 =head1 LICENSE
 

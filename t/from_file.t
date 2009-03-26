@@ -1,5 +1,5 @@
 
-# $Id: from_file.t,v 1.2 2008/12/07 03:40:30 Martin Exp $
+# $Id: from_file.t,v 1.3 2009/03/03 02:57:10 Martin Exp $
 
 use strict;
 use warnings;
@@ -13,9 +13,10 @@ BEGIN
   use_ok('RDF::Simple::Serialiser');
   } # end of BEGIN block
 
-my $ser = RDF::Simple::Serialiser->new();
+my $ser = new RDF::Simple::Serialiser;
 isa_ok($ser, q{RDF::Simple::Serialiser});
-my $par = RDF::Simple::Parser->new();
+my $par = new RDF::Simple::Parser;
+isa_ok($par, q{RDF::Simple::Parser});
 
 test_rdf_file(q{t/simple.rdf}, 1);
 test_rdf_file(q{t/uri_file.rdf}, 1);

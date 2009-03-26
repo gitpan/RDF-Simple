@@ -1,14 +1,17 @@
 
 # This is a test for RT#43688, empty element
 
+use strict;
+use warnings;
+
 use Test::More 'no_plan';
 
 use blib;
 use RDF::Simple::Parser;
 
 my $o = new RDF::Simple::Parser;
-local $/ = undef;
-my $sRDF = <DATA>;
+isa_ok($o, q{RDF::Simple::Parser});
+my $sRDF = join(q{}, <DATA>);
 my @triples = $o->parse_rdf($sRDF);
 is(scalar(@triples), 2, 'got two triples');
 is($triples[1]->[2], q{}, 'got empty string in proper place');

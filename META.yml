@@ -24,8 +24,9 @@ requires:
   Class::MakeMethods: 0
   LWP::UserAgent: 0
   Regexp::Common: 0
+  URI::Escape: 0
   XML::SAX: 0
   perl: 5.005
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.405
+version: 0.407
