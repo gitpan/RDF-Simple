@@ -1,3 +1,7 @@
+2009-04-08  Kingpin  <Martin@BLUEMAX>
+
+	* lib/RDF/Simple/Parser/Handler.pm (propertyElt): fixed to handle simple rdf:resource attributes
+
 2009-03-26  Kingpin  <Martin@BLUEMAX>
 
 	* lib/RDF/Simple/Serialiser.pm (_make_object): if object is scalar ref, output as literal (even if it looks like a URI)

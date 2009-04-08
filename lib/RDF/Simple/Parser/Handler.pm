@@ -1,5 +1,5 @@
 
-# $Id: Handler.pm,v 1.6 2009/03/02 15:47:32 Martin Exp $
+# $Id: Handler.pm,v 1.7 2009/04/08 20:54:45 Martin Exp $
 
 package RDF::Simple::Parser::Handler;
 
@@ -54,14 +54,14 @@ sub new
 sub _triple
   {
   my $self = shift;
+  my ($s, $p, $o) = @_;
   if (DEBUG)
     {
-    print STDERR " FFF $self ->_triple\n";
+    print STDERR " FFF $self ->_triple($s,$p,$o)\n";
     # print STDERR Dumper(\@_);
     my ($package, $file, $line, $sub) = caller(1);
     print STDERR " DDD   called from $sub line $line\n";
     } # if
-  my ($s, $p, $o) = @_;
   my $r = $self->result;
   push @$r, [$s,$p,$o];
   $self->result($r);
@@ -245,52 +245,70 @@ sub propertyElt
     $e->parent->{liCounter}++;
     }
   my $children = $e->children || [];
-  if ((scalar(@$children) eq 1) and (not $e->attrs->{$rdf.'parseType'}))
+  if ($e->attrs->{$rdf.'resource'})
+    {
+    # This is an Object Property Declaration Axiom.
+    $self->_triple($e->parent->subject, $self->uri($e->URI), $e->attrs->{$rdf.'resource'});
+    return;
+    }
+  if (
+      (scalar(@$children) == 1)
+      &&
+      (! $e->attrs->{$rdf.'parseType'})
+     )
     {
     $self->resourcePropertyElt($e);
+    return;
     }
-  elsif ((scalar(@$children) eq 0) and $e->text)
+  if ((scalar(@$children) eq 0) and $e->text)
     {
     $self->literalPropertyElt($e);
+    return;
     }
-  elsif (my $ptype = $e->attrs->{$rdf.'parseType'})
+  my $ptype = $e->attrs->{$rdf.'parseType'};
+  if ($ptype)
     {
     if ($ptype eq 'Resource')
       {
       $self->parseTypeResourcePropertyElt($e);
+      return;
       }
-    elsif ($ptype eq 'Collection')
+    if ($ptype eq 'Collection')
       {
       $self->parseTypeCollectionPropertyElt($e);
+      return;
       }
-    else
-      {
-      $self->parseTypeLiteralPropertyElt($e);
-      }
+    $self->parseTypeLiteralPropertyElt($e);
+    return;
     } # if has a parseType
-  elsif (not $e->text)
+  if (! $e->text)
     {
+    # DEBUG && print STDERR Dumper($e);
     $self->emptyPropertyElt($e);
-    }
+    return;
+    } # if
+  delete $e->{parent};
+  warn " WWW failed to parse element: ", Dumper($e);
   } # propertyElt
 
 sub resourcePropertyElt
   {
-  my ($self,$e) = @_;
+  my ($self, $e) = @_;
   DEBUG && print STDERR " FFF resourcePropertyElt($e)\n";
+  # DEBUG && print STDERR Dumper($e);
   my $rdf = $self->ns->uri('rdf');
   my $n = $e->children->[0];
   $self->nodeElement($n);
   if ($e->parent)
     {
-    $self->_triple($e->parent->subject,$self->uri($e->URI),$n->subject);
+    $self->_triple($e->parent->subject, $self->uri($e->URI), $n->subject);
     }
   if ($e->attrs->{$rdf.'ID'})
     {
     my $base = $e->base || $self->base;
-    my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
-    $self->reify($i,$e->parent->subject,$self->uri($e->URI),$n->subject);
-    }
+    my $i = $self->uri($base .'#'. $e->attrs->{$rdf.'ID'});
+    $self->reify($i, $e->parent->subject, $self->uri($e->URI), $n->subject);
+    } # if
   } # resourcePropertyElt
 
 
@@ -336,24 +354,32 @@ sub parseTypeLiteralOrOtherPropertyElt {
     }
 }
 
-sub parseTypeResourcePropertyElt {
-    my ($self,$e) = @_;
-    DEBUG && print STDERR " FFF parseTypeResourcePropertyElt($e)\n";
-    my $n = $self->bNode;
-    DEBUG && print STDERR " DDD parseTypeResourcePropertyElt _triple(,,$n)\n";
-    $self->_triple($e->parent->subject,$self->uri($e->URI),$n);
-
-    my $c = RDF::Simple::Parser::Element->new('http://www.w3.org/1999/02/22-rdf-syntax-ns#','rdf','Description',$e->parent,$e->attrs,qnames=>$self->qnames,base=>$e->base);
-    $c->subject($n);
-    my @c_children;
-    my $children = $e->children;
-    foreach (@$children) {
-        $_->parent($c);
-        push @c_children, $_;
+sub parseTypeResourcePropertyElt
+  {
+  my ($self,$e) = @_;
+  DEBUG && print STDERR " FFF parseTypeResourcePropertyElt($e)\n";
+  my $n = $self->bNode;
+  DEBUG && print STDERR " DDD parseTypeResourcePropertyElt _triple(,,$n)\n";
+  $self->_triple($e->parent->subject, $self->uri($e->URI), $n);
+  my $c = RDF::Simple::Parser::Element->new('http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+                                            'rdf',
+                                            'Description',
+                                            $e->parent,
+                                            $e->attrs,
+                                            qnames => $self->qnames,
+                                            base => $e->base,
+                                           );
+  $c->subject($n);
+  my @c_children;
+  my $children = $e->children;
+  foreach (@$children)
+    {
+    $_->parent($c);
+    push @c_children, $_;
     }
-    $c->children(\@c_children);
-    $self->nodeElement($c);
-}
+  $c->children(\@c_children);
+  $self->nodeElement($c);
+  } # parseTypeResourcePropertyElt
 
 sub parseTypeCollectionPropertyElt
   {
