@@ -24,6 +24,7 @@ recommends:
   XML::SAX::Expat: 0
 requires:
   Class::MakeMethods: 0
+  File::Slurp: 0
   LWP::UserAgent: 0
   Regexp::Common: 0
   URI::Escape: 0
@@ -31,4 +32,4 @@ requires:
   perl: 5.005
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.408
+version: 0.409

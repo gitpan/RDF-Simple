@@ -1,5 +1,5 @@
 
-# $Id: from_file.t,v 1.3 2009/03/03 02:57:10 Martin Exp $
+# $Id: from_file.t,v 1.4 2009/04/09 13:42:46 Martin Exp $
 
 use strict;
 use warnings;
@@ -26,13 +26,9 @@ sub test_rdf_file
   my $sFname = shift or fail;
   my $iCount = shift or fail;
   file_not_empty_ok($sFname);
-  ok(open(FILE, $sFname), q{opened file});
-  my $rdf = join('', <FILE>);
-  ok(defined $rdf, q{got file contents});
-  ok(close FILE, q{closed file});
-  my @triples = $par->parse_rdf($rdf);
+  my @triples = $par->parse_file($sFname);
   is(scalar(@triples), 1, q{got exactly one triple});
-  $rdf = $ser->serialise(@triples);
+  my $rdf = $ser->serialise(@triples);
   # warn($rdf);
   @triples = $par->parse_rdf($rdf);
   is(scalar(@triples), 1, q{got exactly one triple round-tripped});

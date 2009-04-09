@@ -1,5 +1,5 @@
 
-# $Id: Parser.pm,v 1.8 2009/03/02 15:48:37 Martin Exp $
+# $Id: Parser.pm,v 1.9 2009/04/09 13:42:46 Martin Exp $
 
 use strict;
 use warnings;
@@ -32,13 +32,14 @@ package RDF::Simple::Parser;
 
 use constant DEBUG => 0;
 
+use File::Slurp;
 use LWP::UserAgent;
 use RDF::Simple::Parser::Handler;
 use RDF::Simple::Parser::Sink;
 use XML::SAX qw(Namespaces Validation);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.8 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.9 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (
@@ -83,6 +84,24 @@ sub parse_rdf
   } # parse_rdf
 
 
+=item parse_file($sFname)
+
+Takes one argument, a string which is a fully qualified filename.
+Reads the contents of that file,
+parses it as RDF,
+and returns the same thing as parse_rdf().
+
+=cut
+
+sub parse_file
+  {
+  my $self = shift;
+  my $sFname = shift || return;
+  my $sRDF = read_file($sFname) || return;
+  return $self->parse_rdf($sRDF);
+  } # parse_file
+
+
 =item parse_uri($uri)
 
 Accepts a string which is a fully qualified http:// uri
@@ -103,7 +122,7 @@ sub parse_uri
     $self->base($uri);
     return $self->parse_rdf($rdf);
     }
-  return undef;
+  return;
   } # parse_uri
 
 sub ua
