@@ -3,13 +3,14 @@ abstract: 'read and write RDF without complication'
 author:
   - 'Martin Thurn mthurn@cpan.org'
 build_requires:
+  ExtUtils::MakeMaker: 6.42
   IO::CaptureOutput: 0
   Test::File: 0
   Test::Simple: 0
 configure_requires:
-  ExtUtils::MakeMaker: 6.50
+  ExtUtils::MakeMaker: 6.42
 distribution_type: module
-generated_by: 'Module::Install version 0.81'
+generated_by: 'Module::Install version 0.82'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -32,4 +33,4 @@ requires:
   perl: 5.005
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.409
+version: 0.411

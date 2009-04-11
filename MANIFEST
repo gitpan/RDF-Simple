@@ -13,7 +13,6 @@ lib/RDF/Simple/Parser.pm
 lib/RDF/Simple/Parser/Attribs.pm
 lib/RDF/Simple/Parser/Element.pm
 lib/RDF/Simple/Parser/Handler.pm
-lib/RDF/Simple/Parser/Sink.pm
 lib/RDF/Simple/Serialiser.pm
 lib/RDF/Simple/Serializer.pm
 LICENSE
@@ -22,6 +21,7 @@ MANIFEST			This list of files
 META.yml
 README
 t/001_load.t
+t/coverage.t
 t/empty.t
 t/from_file.t
 t/long.t

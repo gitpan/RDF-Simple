@@ -1,3 +1,15 @@
+2009-04-11  Kingpin  <Martin@BLUEMAX>
+
+	* lib/RDF/Simple/Parser/Handler.pm (propertyElt): fixed to allow literals with value '0'
+
+2009-04-09  Kingpin  <Martin@BLUEMAX>
+
+	* lib/RDF/Simple/Parser/Sink.pm: got rid of this empty unused module
+
+	* lib/RDF/Simple/Parser/Handler.pm (propertyElt): fixed wrong method name called!
+
+	* lib/RDF/Simple/Parser.pm (parse_rdf): fixed to handle case when handler returns no result
+
 2009-04-08  Kingpin  <Martin@BLUEMAX>
 
 	* lib/RDF/Simple/Parser/Handler.pm (propertyElt): fixed to handle simple rdf:resource attributes

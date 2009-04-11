@@ -2,7 +2,8 @@ package RDF::Simple::NS;
 
 use strict;
 
-our $VERSION = '0.3';
+our
+$VERSION = do { my @r = (q$Revision: 1.3 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub new {
         my $class = shift;

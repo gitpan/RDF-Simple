@@ -25,6 +25,8 @@ xmlns:rdf="$sNSrdf#"
 <foo:Baz rdf:about="#baz_id" />
 <foo:Bar rdf:about="#bar_id">
    <foo:bazProp rdf:resource="#baz_id" />
+   <foo:intProp1 rdf:datatype="integer">999</foo:intProp1>
+   <foo:intProp2 rdf:datatype="integer">0</foo:intProp2>
 </foo:Bar>
 </rdf:RDF>
 ENDRDF
@@ -36,6 +38,8 @@ my @aExpected = (
                  [$node2, qq{$sNSrdf#type}, qq{$sNS#Baz}],
                  [$node1, qq{$sNSrdf#type}, qq{$sNS#Bar}],
                  [$node1, qq{$sNS#bazProp}, $node2],
+                 [$node1, qq{$sNS#intProp1}, q{999}],
+                 [$node1, qq{$sNS#intProp2}, q{0}],
                 );
 my @aGot = $par->parse_rdf($sRDF);
 # print STDERR Dumper(\@aGot);

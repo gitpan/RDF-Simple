@@ -1,5 +1,5 @@
 
-# $Id: Parser.pm,v 1.9 2009/04/09 13:42:46 Martin Exp $
+# $Id: Parser.pm,v 1.11 2009/04/09 21:40:10 Martin Exp $
 
 use strict;
 use warnings;
@@ -39,7 +39,7 @@ use RDF::Simple::Parser::Sink;
 use XML::SAX qw(Namespaces Validation);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.9 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.11 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (
@@ -71,8 +71,7 @@ sub parse_rdf
   {
   my ($self, $rdf) = @_;
   DEBUG && print STDERR " DDD Parser::parse_rdf()\n";
-  my $sink = new RDF::Simple::Parser::Sink;
-  my $handler = new RDF::Simple::Parser::Handler($sink,
+  my $handler = new RDF::Simple::Parser::Handler(q{deprecated argument},
                                                  qnames => 1,
                                                  base => $self->base,
                                                 );
@@ -80,7 +79,8 @@ sub parse_rdf
   $factory->require_feature(Namespaces);
   my $parser = $factory->parser(Handler => $handler);
   $parser->parse_string($rdf);
-  return @{ $handler->result };
+  my $res = $handler->result;
+  return $res ? @$res : $res;
   } # parse_rdf
 
 
@@ -112,17 +112,20 @@ Fetches the remote file and returns the same thing as parse_rdf().
 
 sub parse_uri
   {
-  my ($self,$uri) = @_;
+  my $self = shift;
+  my $uri = shift || return;
   my $rdf;
-  eval {
+  eval
+    {
     $rdf = $self->ua->get($uri)->content;
     };
   warn ($@) if $@;
-  if ($rdf) {
+  if ($rdf && ($rdf ne q{}))
+    {
+    # print STDERR " DDD will parse_rdf(===$rdf===)\n";
     $self->base($uri);
     return $self->parse_rdf($rdf);
-    }
-  return;
+    } # if
   } # parse_uri
 
 sub ua

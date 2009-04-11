@@ -1,11 +1,11 @@
 
-# $Id: Makefile.PL,v 1.22 2009/04/09 13:42:56 Martin Exp $
+# $Id: Makefile.PL,v 1.23 2009/04/11 15:49:43 Martin Exp $
 
 use inc::Module::Install;
 
 all_from('lib/RDF/Simple.pm');
 author('Martin Thurn mthurn@cpan.org');
-version(0.409);
+version(0.411);
 perl_version(5.005);
 
 requires('Class::MakeMethods');
@@ -20,5 +20,19 @@ requires('XML::SAX');
 recommends('XML::SAX::Expat');  # Need this for Solaris and Linux?
 
 WriteAll;
+
+sub MY::postamble
+  {
+  my $ret = '';
+  $ret .= <<'PART0';
+coverage :
+	- mkdir cover_db
+	- cover -delete
+	- $(MAKE) HARNESS_PERL_SWITCHES=-MDevel::Cover test
+	cover
+	firefox cover_db/coverage.html
+PART0
+  return $ret;
+  } # MY::postamble
 
 __END__

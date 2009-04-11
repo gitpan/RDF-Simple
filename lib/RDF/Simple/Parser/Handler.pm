@@ -1,5 +1,5 @@
 
-# $Id: Handler.pm,v 1.7 2009/04/08 20:54:45 Martin Exp $
+# $Id: Handler.pm,v 1.14 2009/04/11 15:51:32 Martin Exp $
 
 package RDF::Simple::Parser::Handler;
 
@@ -19,6 +19,9 @@ use Class::MakeMethods::Standard::Hash (
                                         scalar => [ qw( stack base genID disallowed qnames result bnode_absolute_prefix )],
                                        );
 
+our
+$VERSION = do { my @r = (q$Revision: 1.14 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+
 sub addns
   {
   my ($self,$prefix,$uri) = @_;
@@ -36,7 +39,7 @@ sub ns
 sub new
   {
   DEBUG && print STDERR " FFF Handler::new(@_)\n";
-  my ($class,$sink, %p) = @_;
+  my ($class, $sink, %p) = @_;
   my $self = bless {}, ref $class || $class;
   $self->base($p{'base'});
   $self->qnames($p{qnames});
@@ -152,13 +155,11 @@ sub literal
     } # if
   return $string;
   #r_quot = re.compile(r'([^\\])"')
-  
   #      return ''.join(('"%s"' %
   # r_quot.sub('\g<1>\\"',
   #`unicode(s)`[2:-1]),
   #          lang and ("@" + lang) or '',
   # dtype and ("^^<%s>" % dtype) or ''))
-  
   } # literal
 
 sub document
@@ -181,15 +182,15 @@ sub document
 
 sub nodeElement
   {
-  my ($self,$e) = @_;
+  my ($self, $e) = @_;
   my $dissed =  $self->disallowed;
   my $dis = grep {$_ eq $e->URI} @$dissed;
   warn("disallowed element used as node") if $dis;
   my $rdf = $self->ns->uri('rdf');
-  my $base = $e->base || $self->base;
+  my $base = $e->base || $self->base || q{};
   if ($e->attrs->{$rdf.'ID'})
     {
-    $e->subject( $self->uri( join('',($base,'#',$e->attrs->{$rdf.'ID'})) ));
+    $e->subject( $self->uri($base .'#'. $e->attrs->{$rdf.'ID'}));
     }
   elsif ($e->attrs->{$rdf.'about'})
     {
@@ -260,7 +261,7 @@ sub propertyElt
     $self->resourcePropertyElt($e);
     return;
     }
-  if ((scalar(@$children) eq 0) and $e->text)
+  if ((scalar(@$children) eq 0) && (defined $e->text) && ($e->text ne q{}))
     {
     $self->literalPropertyElt($e);
     return;
@@ -278,10 +279,10 @@ sub propertyElt
       $self->parseTypeCollectionPropertyElt($e);
       return;
       }
-    $self->parseTypeLiteralPropertyElt($e);
+    $self->parseTypeLiteralOrOtherPropertyElt($e);
     return;
     } # if has a parseType
-  if (! $e->text)
+  if ((! defined $e->text) || ($e->text eq q{}))
     {
     # DEBUG && print STDERR Dumper($e);
     $self->emptyPropertyElt($e);
@@ -331,11 +332,11 @@ sub literalPropertyElt
   my $rdf = $self->ns->uri('rdf');
   my $o = $self->literal($e->text, $e->language, $e->attrs->{$rdf.'datatype'});
   DEBUG && print STDERR " DDD literalPropertyElt _triple(,,$o)\n";
-  $self->_triple($e->parent->subject,$self->uri($e->URI),$o);
+  $self->_triple($e->parent->subject, $self->uri($e->URI), $o);
   if ($e->attrs->{$rdf.'ID'})
     {
-    my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
-    $self->reify($i,$e->parent->subject, $self->uri($e->URI),$o);
+    my $i = $self->uri($base .'#'. $e->attrs->{$rdf.'ID'});
+    $self->reify($i, $e->parent->subject, $self->uri($e->URI), $o);
     } # if
   } # literalPropertyElt
 
@@ -348,7 +349,7 @@ sub parseTypeLiteralOrOtherPropertyElt {
     DEBUG && print STDERR " DDD parseTypeLiteralOrOtherPropertyElt _triple(,,$o)\n";
     $self->_triple($e->parent->subject,$self->uri($e->URI),$o);
     if ($e->attrs->{$rdf.'ID'}) {
-        my $i = $self->uri(join($base,'#'.$e->attrs->{$rdf.'ID'}));
+        my $i = $self->uri($base .'#'. $e->attrs->{$rdf.'ID'});
         $e->subject($i);
         $self->reify($i,$e->parent->subject,$self->URI($e->URI),$o);
     }
@@ -480,7 +481,7 @@ sub emptyPropertyElt
     } # else ! $id
   if ($e->attrs->{$rdf.'ID'})
     {
-    my $i = $self->uri(join($base, '#'.$e->attrs->{$rdf.'ID'}));
+    my $i = $self->uri($base .'#'. $e->attrs->{$rdf.'ID'});
     $self->reify($i, $e->parent->subject, $self->uri($e->URI,$r));
     }
   } # emptyPropertyElt

@@ -1,5 +1,5 @@
 
-# $Id: Serializer.pm,v 1.2 2008/12/07 03:28:45 Martin Exp $
+# $Id: Serializer.pm,v 1.3 2009/04/11 15:37:59 Martin Exp $
 
 package RDF::Simple::Serializer;
 
@@ -7,6 +7,9 @@ use strict;
 use warnings;
 
 use base q(RDF::Simple::Serialiser);
+
+our
+$VERSION = do { my @r = (q$Revision: 1.3 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 =head1 NAME
 

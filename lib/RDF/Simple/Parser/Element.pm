@@ -1,5 +1,5 @@
 
-# $Id: Element.pm,v 1.2 2008/12/07 03:36:56 Martin Exp $
+# $Id: Element.pm,v 1.3 2009/04/11 15:37:34 Martin Exp $
 
 package RDF::Simple::Parser::Element;
 
@@ -9,6 +9,9 @@ use Data::Dumper;
 use Class::MakeMethods::Standard::Hash (
                                         scalar => [ qw( base subject language URI qname attrs parent children xtext text )],
                                        );
+
+our
+$VERSION = do { my @r = (q$Revision: 1.3 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub new {
     my ($class,$ns,$prefix,$name,$parent,$attrs,%p) = @_;
