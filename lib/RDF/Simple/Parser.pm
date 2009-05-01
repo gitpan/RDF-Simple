@@ -1,5 +1,5 @@
 
-# $Id: Parser.pm,v 1.11 2009/04/09 21:40:10 Martin Exp $
+# $Id: Parser.pm,v 1.12 2009/05/01 03:30:12 Martin Exp $
 
 use strict;
 use warnings;
@@ -35,11 +35,10 @@ use constant DEBUG => 0;
 use File::Slurp;
 use LWP::UserAgent;
 use RDF::Simple::Parser::Handler;
-use RDF::Simple::Parser::Sink;
 use XML::SAX qw(Namespaces Validation);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.11 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.12 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (

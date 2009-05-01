@@ -1,11 +1,11 @@
 
-# $Id: Makefile.PL,v 1.23 2009/04/11 15:49:43 Martin Exp $
+# $Id: Makefile.PL,v 1.24 2009/05/01 03:30:26 Martin Exp $
 
 use inc::Module::Install;
 
 all_from('lib/RDF/Simple.pm');
 author('Martin Thurn mthurn@cpan.org');
-version(0.411);
+version(0.412);
 perl_version(5.005);
 
 requires('Class::MakeMethods');
