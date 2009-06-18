@@ -1,5 +1,5 @@
 
-# $Id: Parser.pm,v 1.12 2009/05/01 03:30:12 Martin Exp $
+# $Id: Parser.pm,v 1.13 2009/06/18 02:34:01 Martin Exp $
 
 use strict;
 use warnings;
@@ -38,7 +38,7 @@ use RDF::Simple::Parser::Handler;
 use XML::SAX qw(Namespaces Validation);
 
 our
-$VERSION = do { my @r = (q$Revision: 1.12 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.13 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 # Use a hash to implement objects of this type:
 use Class::MakeMethods::Standard::Hash (
@@ -74,6 +74,8 @@ sub parse_rdf
                                                  qnames => 1,
                                                  base => $self->base,
                                                 );
+  # Save (a reference to) our handler for future reference:
+  $self->{_handler_} = $handler;
   my $factory = new XML::SAX::ParserFactory;
   $factory->require_feature(Namespaces);
   my $parser = $factory->parser(Handler => $handler);
@@ -126,6 +128,20 @@ sub parse_uri
     return $self->parse_rdf($rdf);
     } # if
   } # parse_uri
+
+=item getns
+
+Returns a hashref of all namespaces found in the document.
+
+=cut
+
+sub getns
+  {
+  my $self = shift or return;
+  my $handler = $self->{_handler_} or return;
+  my $ns = $handler->ns or return;
+  return $ns->{_lookup};
+  } # getns
 
 sub ua
   {

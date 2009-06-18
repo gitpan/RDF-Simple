@@ -1,5 +1,5 @@
 
-# $Id: Serialiser.pm,v 1.9 2009/03/26 19:42:02 Martin Exp $
+# $Id: Serialiser.pm,v 1.10 2009/06/18 02:34:18 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
@@ -60,7 +60,7 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.9 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.10 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 =item new( [ nodeid_prefix => 'prefix' ])
 
@@ -240,7 +240,16 @@ provides the following vocabularies by default
 
 sub addns
   {
-  my ($self, %p) = @_;
+  my $self = shift;
+  my %p;
+  if (ref $_[0] eq 'HASH')
+    {
+    %p = %{$_[0]};
+    }
+  else
+    {
+    %p = @_;
+    }
   return $self->_ns->lookup(%p);
   } # addns
 

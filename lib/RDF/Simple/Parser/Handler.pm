@@ -1,5 +1,5 @@
 
-# $Id: Handler.pm,v 1.14 2009/04/11 15:51:32 Martin Exp $
+# $Id: Handler.pm,v 1.15 2009/06/18 02:34:49 Martin Exp $
 
 package RDF::Simple::Parser::Handler;
 
@@ -20,11 +20,11 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.14 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.15 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub addns
   {
-  my ($self,$prefix,$uri) = @_;
+  my ($self, $prefix, $uri) = @_;
   $self->ns->lookup($prefix,$uri);
   } # addns
 
@@ -73,6 +73,8 @@ sub _triple
 sub start_element
   {
   my ($self, $sax) = @_;
+  DEBUG && print STDERR " FFF start_element($sax->{LocalName})\n";
+  DEBUG && print STDERR Dumper($sax->{Attributes});
   my $e;
   my $stack = $self->stack;
   my $parent;
@@ -82,6 +84,8 @@ sub start_element
     }
   my $attrs = RDF::Simple::Parser::Attribs->new($sax->{Attributes},
                                                 $self->qnames);
+  # Add namespace to our lookup table:
+  $self->addns($sax->{Prefix} => $sax->{NamespaceURI});
   $e = RDF::Simple::Parser::Element->new(
                                          $sax->{NamespaceURI},
                                          $sax->{Prefix},
@@ -108,9 +112,9 @@ sub characters
 sub end_element
   {
   my ($self, $sax) = @_;
-  DEBUG && print STDERR " FFF end_element()\n";
   my $name = $sax->{LocalName};
   my $qname = $sax->{Name};
+  DEBUG && print STDERR " FFF end_element($name,$qname)\n";
   my $stack = $self->stack;
   my $element = pop @{$stack};
   # DEBUG && print STDERR " DDD   element is ", Dumper($element);
