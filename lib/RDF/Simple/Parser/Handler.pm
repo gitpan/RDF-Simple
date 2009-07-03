@@ -1,5 +1,5 @@
 
-# $Id: Handler.pm,v 1.15 2009/06/18 02:34:49 Martin Exp $
+# $Id: Handler.pm,v 1.16 2009-07-03 18:16:08 Martin Exp $
 
 package RDF::Simple::Parser::Handler;
 
@@ -20,21 +20,7 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.15 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
-
-sub addns
-  {
-  my ($self, $prefix, $uri) = @_;
-  $self->ns->lookup($prefix,$uri);
-  } # addns
-
-sub ns
-  {
-  my $self = shift;
-  return $self->{_ns} if $self->{_ns};
-  $self->{_ns} = RDF::Simple::NS->new;
-  } # ns
-
+$VERSION = do { my @r = (q$Revision: 1.16 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 sub new
   {
@@ -53,6 +39,27 @@ sub new
   $self->disallowed(\@dis);
   return $self;
   } # new
+
+=head1 METHODS
+
+=over
+
+=cut
+
+sub addns
+  {
+  my ($self, $prefix, $uri) = @_;
+  DEBUG && print STDERR " DDD Handler::addns($prefix => $uri)\n";
+  $self->ns->lookup($prefix,$uri);
+  } # addns
+
+sub ns
+  {
+  my $self = shift;
+  return $self->{_ns} if $self->{_ns};
+  $self->{_ns} = RDF::Simple::NS->new;
+  } # ns
+
 
 sub _triple
   {
@@ -75,6 +82,19 @@ sub start_element
   my ($self, $sax) = @_;
   DEBUG && print STDERR " FFF start_element($sax->{LocalName})\n";
   DEBUG && print STDERR Dumper($sax->{Attributes});
+  if ($sax->{LocalName} eq 'RDF')
+    {
+    # This is the toplevel element of the RDF document.  See if there
+    # is an xml:base URL specified:
+    foreach my $rh (values %{$sax->{Attributes}})
+      {
+      if (($rh->{Prefix} eq 'xml') && ($rh->{LocalName} eq 'base'))
+        {
+        # Found the xml:base!
+        $self->addns(q{_perl_module_rdf_simple_base_} => $rh->{Value});
+        } # if
+      } # foreach
+    } # if
   my $e;
   my $stack = $self->stack;
   my $parent;
@@ -134,11 +154,28 @@ sub end_element
     }
   } # end_element
 
+=item uri
+
+Takes a URI (possibly relative to the current RDF document)
+and returns an absolute URI.
+
+=cut
+
 sub uri
   {
-  my ($self,$uri) = @_;
-  # losing the angle brackets for sake of Simplicity
-  return "$uri";
+  my ($self, $uri) = @_;
+  my $sBase = $self->ns->uri('_perl_module_rdf_simple_base_') || q{};
+  if ($uri =~ m/\A:/)
+    {
+    # URI has empty base.
+    $uri = qq{$sBase$uri};
+    } # if
+  elsif (($uri =~ m/\A#/) && defined $sBase)
+    {
+    # URI has empty base.
+    $uri = qq{$sBase$uri};
+    } # if
+  return $uri;
   } # uri
 
 sub bNode
@@ -210,11 +247,11 @@ sub nodeElement
     }
   if ($e->URI ne $rdf.'Description')
     {
-    $self->_triple($e->subject,$rdf.'type',$self->uri($e->URI));
+    $self->_triple($e->subject, $rdf.'type', $self->uri($e->URI));
     }
   if ($e->attrs->{$rdf.'type'})
     {
-    $self->_triple($e->subject,$rdf.'type',$self->ns->uri($e->{$rdf.'type'}));
+    $self->_triple($e->subject, $rdf.'type', $self->ns->uri($e->{$rdf.'type'}));
     }
   foreach my $k (keys %{$e->attrs})
     {
@@ -223,9 +260,9 @@ sub nodeElement
     my ($in) = grep {/$k/} @$dis;
     if (not $in)
       {
-      my $objt = $self->literal($e->attrs->{$k},$e->language);
+      my $objt = $self->literal($e->attrs->{$k}, $e->language);
       DEBUG && print STDERR " DDD nodeElement _triple(,,$objt)\n";
-      $self->_triple($e->subject,$self->uri($k),$objt);
+      $self->_triple($e->subject, $self->uri($k), $objt);
       } # if
     } # foreach
   my $children = $e->children;
@@ -490,6 +527,8 @@ sub emptyPropertyElt
     }
   } # emptyPropertyElt
 
+
+=back
 
 =head1 NOTES
 

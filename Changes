@@ -1,3 +1,9 @@
+2009-07-03  Kingpin  <Martin@BLUEMAX>
+
+	* lib/RDF/Simple/Serialiser.pm: don't require subject to be a full URI
+
+	* lib/RDF/Simple/Parser/Handler.pm: Try to parse the xml:base from the header and use it when needed
+
 2009-04-11  Kingpin  <Martin@BLUEMAX>
 
 	* lib/RDF/Simple/Parser/Handler.pm (propertyElt): fixed to allow literals with value '0'

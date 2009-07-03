@@ -33,16 +33,16 @@ my $sExpectedN3 = <<"END_N3";
 \@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 \@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-:a123 a http://xmlns.com/foaf/0.1/Person .
-:a123 foaf:name "John Doe" .
-:a123 foaf:url $sURL
+$node1 a http://xmlns.com/foaf/0.1/Person .
+$node1 foaf:name "John Doe" .
+$node1 foaf:url $sURL
 END_N3
 my $sExpectedRDF = <<"END_RDF";
 <rdf:RDF
 xmlns:foaf="http://xmlns.com/foaf/0.1/"
 xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 >
-<foaf:Person rdf:nodeID="a123">
+<foaf:Person rdf:about="$node1">
 <foaf:name>John Doe</foaf:name>
 <foaf:url>$sURL</foaf:url>
 </foaf:Person>

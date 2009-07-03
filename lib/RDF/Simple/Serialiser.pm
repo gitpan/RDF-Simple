@@ -1,5 +1,5 @@
 
-# $Id: Serialiser.pm,v 1.10 2009/06/18 02:34:18 Martin Exp $
+# $Id: Serialiser.pm,v 1.11 2009-07-03 18:18:25 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
@@ -52,6 +52,7 @@ Accepts an array of triples, returns a serialised RDF document.
 
 =cut
 
+use Data::Dumper;
 use RDF::Simple::NS;
 use Regexp::Common qw(URI);
 use Class::MakeMethods::Standard::Hash (
@@ -60,9 +61,11 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.10 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.11 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
-=item new( [ nodeid_prefix => 'prefix' ])
+=item new()
+
+=item new(nodeid_prefix => 'prefix')
 
 =cut
 
@@ -114,6 +117,9 @@ sub serialize
   return $self->serialise(@_);
   } # serialize
 
+# _make_object() is called on each subset of triples that have the
+# same subject.
+
 sub _make_object
   {
   my $self = shift;
@@ -124,44 +130,53 @@ sub _make_object
     {
     push @triples, [@$ra];
     } # foreach
+  # DEBUG && print STDERR " DDD in _make_object(), triples is ", Dumper(\@triples);
   my $object;
   my $rdf = $self->_ns;
+  # Convert the predicate of each triple into a legal qname:
   @triples = map {$_->[1] = $rdf->qname($_->[1]); $_} @triples;
+  # Find the type declaration of this subject (assume there is only one):
   my ($class) = grep {$_->[1] eq 'rdf:type'} @triples;
+  # DEBUG && print STDERR " DDD in _make_object(), class is ", Dumper($class);
   foreach my $t (@triples)
     {
+    # Register the namespace of (all) the predicates:
     $self->_used($t->[1]);
     my $qn = $rdf->qname($t->[0]);
     if ($qn ne $t->[0])
       {
+      # Register the namespace of (all) the subject(s):
       $self->_used($qn);
       } # if
     } # foreach
-  $self->_used('rdf:Description');
+  # $self->_used('rdf:Description');
   if ($class)
     {
-    # This bag of triples has a Class
+    # This bag of triples has a Class explicitly declared:
     $object->{Class} = $rdf->qname($class->[2]);
-    $self->_used( $object->{Class} );
     }
   else
     {
     # This bag of triples needs a generic Description Class:
     $object->{Class} = 'rdf:Description';
     }
-  # Assign identifier as an arbitrary (but resolving) uri
+  # Register the namespace of this subject's Class:
+  $self->_used($object->{Class});
+  # Assign identifier as an arbitrary (but resolving) uri:
   my $id = $triples[0]->[0];
   if (
       $self->_looks_like_uri($id)
       ||
-      ($id =~ m/^\#/)
+      $self->_looks_like_legal_id($id)
+      ||
+      (($id =~ m/^[#:]/) && $self->_looks_like_legal_id(substr($id,1)))
      )
     {
     $object->{Uri} = $id;
     } # if
   else
     {
-    $id =~ s/\A[^a-zA-Z]/a/; # stupid xml naming conventions
+    # Delete non-alphanumeric characters:
     $id =~ s/\W//g;
     $object->{NodeId} = $id;
     }
@@ -212,6 +227,22 @@ sub _looks_like_uri
           ($s =~ m/.#./)
          );
   } # _looks_like_uri
+
+sub _looks_like_legal_id
+  {
+  my $self = shift;
+  my $s = shift || '';
+  return (
+          # Starts with alphanumeric:
+          ($s =~ m/\A\w/)
+          &&
+          # Only consists of alphanumerics plus a few punctuations.
+          # I'm not sure what the correct set of characters is, even
+          # after reading the RDF specification (it only refers to
+          # full URIs):
+          ($s =~ m/\A[-:_a-z0-9]+\z/)
+         );
+  } # _looks_like_legal_id
 
 
 =item addns( qname  => 'http://example.com/rdf/vocabulary#',

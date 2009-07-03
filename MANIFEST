@@ -25,8 +25,11 @@ t/coverage.t
 t/empty.t
 t/from_file.t
 t/long.t
+t/multi-class.rdf
+t/multi-class.t
 t/pod.t
 t/rt-44879-resource.t
+t/rt46956.t
 t/simple.rdf
 t/uri.t
 t/uri_file.rdf

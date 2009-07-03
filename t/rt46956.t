@@ -15,13 +15,16 @@ BEGIN
   use_ok($PM);
   } # BEGIN
 
-my $sNS = q{http://foo.com/foo.owl};
+my $sNSfoo = q{http://foo.com/foo.owl};
+my $sNSbase = q{http://base.org/base};
 my $sNSrdf = q{http://www.w3.org/1999/02/22-rdf-syntax-ns};
-my $node1 = qq{#bar_id};
-my $node2 = qq{#baz_id};
+my $node1raw = qq{#bar_id};
+my $node1 = qq{$sNSbase$node1raw};
+my $node2 = qq{$sNSfoo#baz_id};
 my $sRDF = <<"ENDRDF";
 <rdf:RDF
-xmlns:foo="$sNS#"
+xml:base="$sNSbase"
+xmlns:foo="$sNSfoo#"
 xmlns:rdf="$sNSrdf#"
 >
 <foo:Baz rdf:about="$node2" />
@@ -34,17 +37,21 @@ xmlns:rdf="$sNSrdf#"
 ENDRDF
 my $par = new $PM;
 isa_ok($par, $PM);
-my @aExpected = (
-                 [$node2, qq{$sNSrdf#type}, qq{$sNS#Baz}],
-                 [$node1, qq{$sNSrdf#type}, qq{$sNS#Bar}],
-                 [$node1, qq{$sNS#bazProp}, $node2],
-                 [$node1, qq{$sNS#intProp1}, q{999}],
-                 [$node1, qq{$sNS#intProp2}, q{0}],
-                );
 my @aGot = $par->parse_rdf($sRDF);
+# print STDERR Dumper (\@aGot);
+# print STDERR Dumper $par->getns;
+my @aExpected = (
+                 [$node2, qq{$sNSrdf#type}, qq{$sNSfoo#Baz}],
+                 [$node1, qq{$sNSrdf#type}, qq{$sNSfoo#Bar}],
+                 [$node1, qq{$sNSfoo#bazProp}, $node2],
+                 [$node1, qq{$sNSfoo#intProp1}, q{999}],
+                 [$node1, qq{$sNSfoo#intProp2}, q{0}],
+                );
 # print STDERR Dumper(\@aGot);
 # @aExpected = sort @aExpected;
 # @aGot = sort @aGot;
 is_deeply(\@aGot, \@aExpected);
 
 __END__
+
+
