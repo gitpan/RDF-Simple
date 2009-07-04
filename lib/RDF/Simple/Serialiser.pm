@@ -1,9 +1,11 @@
 
-# $Id: Serialiser.pm,v 1.11 2009-07-03 18:18:25 Martin Exp $
+# $Id: Serialiser.pm,v 1.12 2009-07-04 14:55:24 Martin Exp $
 
 package RDF::Simple::Serialiser;
 
 use strict;
+
+use constant DEBUG => 0;
 
 =head1 NAME
 
@@ -61,7 +63,7 @@ use Class::MakeMethods::Standard::Hash (
                                        );
 
 our
-$VERSION = do { my @r = (q$Revision: 1.11 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
+$VERSION = do { my @r = (q$Revision: 1.12 $ =~ /\d+/g); sprintf "%d."."%03d" x $#r, @r };
 
 =item new()
 
@@ -185,29 +187,37 @@ sub _make_object
   foreach my $statement (@triples)
     {
     next if $statement->[1] eq 'rdf:type';
-    if (ref $statement->[2])
+    my $obj = $statement->[2];
+    DEBUG && print STDERR " DDD   start processing object($obj)\n";
+    if (ref $obj)
       {
       # Special case: insert this value as a string, no matter what it
       # looks like:
-      push @{ $object->{literal}->{$statement->[1]} }, ${$statement->[2]};
+      push @{ $object->{literal}->{$statement->[1]} }, ${$obj};
       }
-    elsif ($statement->[2] =~ m/^$pref/)
+    elsif ($obj =~ m/^$pref/)
       {
       $statement->[2] =~ s/\A[^a-zA-Z]/a/;
       $statement->[2] =~ s/\W//g;
-      push @{ $object->{nodeid}->{$statement->[1]} },$statement->[2];
+      push @{ $object->{nodeid}->{$statement->[1]} }, $obj;
       } # if
     elsif (
-           $self->_looks_like_uri($statement->[2])
+           $self->_looks_like_uri($obj)
            ||
-           ($statement->[2] =~ m/^\#/)
+           $self->_looks_like_legal_id($obj)
+           ||
+           (
+            ($obj =~ m/^[#:]/)
+            &&
+            $self->_looks_like_legal_id(substr($obj, 1))
+           )
           )
       {
-      push @{ $object->{resource}->{$statement->[1]} }, $statement->[2];
+      push @{ $object->{resource}->{$statement->[1]} }, $obj;
       }
     else
       {
-      push @{ $object->{literal}->{$statement->[1]} }, $statement->[2];
+      push @{ $object->{literal}->{$statement->[1]} }, $obj;
       }
     } # foreach
   return $object;
